@@ -11,4 +11,4 @@ RUN echo "belen:belen" | chpasswd
 # activamos el puerto 80 de apache
 EXPOSE 80
 # ejecutamos apache en primer plano cuando se inicie el contenedor
-CMD apachectl -DFOREGROOUND
+CMD apachectl -DFOREGROUND
