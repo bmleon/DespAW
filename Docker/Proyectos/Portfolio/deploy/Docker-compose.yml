@@ -5,4 +5,4 @@ services:
       dockerfile: Dockerfile
     container_name: ctportfolioDAW
     ports:
-      -"8820:80"
+      - "8820:80"
