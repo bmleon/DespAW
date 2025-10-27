@@ -1,0 +1,8 @@
+services:
+  web:
+    build: # compliar la imagen a partir del Dockerfile
+      context: . # raiz del proyecto portfolio
+      dockerfile: Dockerfile
+    container_name: ctportfolio
+    ports:
+      -"8810:80"
