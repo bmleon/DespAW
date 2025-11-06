@@ -12,7 +12,7 @@ RUN echo "belen:belen" | chpasswd
 #Establece el directorio de trabajo dentro del contenedor Apache
 WORKDIR /var/www/html
 #Copiamos el contenido del directorio src (relativo al contenedor)
-COPY ./src .
+#COPY ./src .
 # activamos el puerto 80 de apache
 EXPOSE 80
 # ejecutamos apache en primer plano cuando se inicie el contenedor
