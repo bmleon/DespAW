@@ -1,0 +1,12 @@
+services:
+  base:
+    build:
+      #ruta a través de la cual desde cualquier proyecto
+      #se tiene aceeso a cualquier imagen (DFile), recurso
+      context: /home/belen/devops/DespAW/Docker/Gaia
+      dockerfile: ./dockerfiles/base/ubuntu/Dockerfile
+      args:
+        - USUARIO=${USUARIO}
+    container_name: ctbaseDAW
+    environment:
+      - USUARIO="pepe"
