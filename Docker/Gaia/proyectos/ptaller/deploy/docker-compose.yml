@@ -1,0 +1,6 @@
+services:
+  webtaller:
+    build: 
+      context: ..
+      dockerfile: ./deploy/Dockerfile
+    image: ${FIRMA}/ub${INICIALES}${}
