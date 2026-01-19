@@ -1,14 +1,28 @@
 #!/bin/bash
+# carga las variables de entono pasadas desde el D.Compose
 set -e
-newUser(){
-    useradd -rm -d /home/${USUARIO} -s /bin/bash ${USUARIO}
-    echo "${USUARIO}:1234" | chpasswd
-    echo "Bienvenido ${USUARIO} ... " > /home/${USUARIO}/bienvenida.txt
-}
 
-main(){
+source /root/admin/base/usuarios/mainUsuarios.sh
+source /root/admin/base/ssh/mainSsh.sh
+
+# source /root/admin/base/usuarios/makeUsuariosPostgress
+
+main() {
+    # gestion usuario ---> getsUser.sh
+    # gestion del sudo ---> gestSudo.sh
+    # gestion del ssh ---> gestSsh.sh
+    # ...
+    touch /root/logs/informe.log
     newUser
-    tail -f /dev/null
+    if [ "$?" -eq 0 ]
+    then
+        newSSH
+    fi
+
+    # encargada de dejar este contendor vivo en BGround. 
+    # Eliminamos el tail 
+    ## tail -f /dev/null
+    ## script's que se encargar de configurar el imagen/contenedor
 }
 
 main

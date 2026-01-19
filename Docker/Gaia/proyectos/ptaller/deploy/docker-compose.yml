@@ -3,4 +3,13 @@ services:
     build: 
       context: ..
       dockerfile: ./deploy/Dockerfile
-    image: ${FIRMA}/ub${INICIALES}${}
+    image: ${FIRMA}/ub${INICIALES}${PROYECTO}
+    hostname: ${CONTENEDOR}
+    container_name: ${CONTENEDOR}
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/root/logs
+    ports:
+      - "${PORT_WWW}:80"
+      - "${PORT_NODE}:3000"
