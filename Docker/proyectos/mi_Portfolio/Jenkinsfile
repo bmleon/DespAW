@@ -1,58 +1,52 @@
 pipeline {
-    agent {
-        kubernetes {
-            yaml '''
-            apiVersion: v1
-            kind: Pod
-            spec:
-              containers:
-              - name: kaniko
-                image: gcr.io/kaniko-project/executor:debug
-                command: ["sleep"]
-                args: ["9999999"]
-              - name: kubectl
-                image: bitnami/kubectl:latest
-                command: ["sleep"]
-                args: ["9999999"]
-            '''
-        }
-    }
+    agent any // Usa directamente el servidor donde corre Jenkins
 
     environment {
-        // Tus datos exactos sacados de tus YAML
         DOCKER_USER = 'bmleon'
-        IMAGE_NAME = 'miportfolio' 
+        IMAGE_NAME  = 'miportfolio'
     }
 
     stages {
-        stage('Construir y Subir (Kaniko)') {
+        stage('Limpiar Espacio') {
             steps {
-                container('kaniko') {
-                    // Usamos las credenciales que ya tienes en Jenkins
-                    withCredentials([usernamePassword(credentialsId: 'docker-hub-creds', passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER_VAR')]) {
-                        sh '''
-                        echo "Configurando credenciales para Kaniko..."
-                        mkdir -p /kaniko/.docker
-                        echo "{\\"auths\\":{\\"https://index.docker.io/v1/\\":{\\"username\\":\\"${DOCKER_USER_VAR}\\",\\"password\\":\\"${DOCKER_PASS}\\"}}}" > /kaniko/.docker/config.json
+                // Borra imágenes antiguas para no llenar el disco de la VPS
+                sh "docker system prune -f || true"
+            }
+        }
 
-                        echo "Empaquetando tu portfolio..."
-                        /kaniko/executor --context `pwd` --dockerfile `pwd`/Dockerfile --destination ${DOCKER_USER}/${IMAGE_NAME}:latest
-                        '''
-                    }
+        stage('Construir Imagen') {
+            steps {
+                // Construye la imagen usando el Docker de la VPS
+                sh "docker build -t ${DOCKER_USER}/${IMAGE_NAME}:latest -f Docker/proyectos/mi_Portfolio/deploy/Dockerfile ."
+            }
+        }
+
+        stage('Subir a Docker Hub') {
+            steps {
+                // Usa las credenciales que ya tienes guardadas en Jenkins
+                withCredentials([usernamePassword(credentialsId: 'docker-hub-creds', passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER_VAR')]) {
+                    sh "echo \$DOCKER_PASS | docker login -u \$DOCKER_USER_VAR --password-stdin"
+                    sh "docker push ${DOCKER_USER}/${IMAGE_NAME}:latest"
                 }
             }
         }
 
         stage('Desplegar en Kubernetes') {
             steps {
-                container('kubectl') {
-                    echo 'Aplicando todos tus archivos YAML de la carpeta kubernetes...'
-                    sh 'kubectl apply -f deploy/kubernetes/'
-
-                    echo 'Reiniciando el deployment para asegurar que coge la imagen más nueva...'
-                    sh 'kubectl rollout restart deployment deploy-miportfolio -n namespace-miportfolio'
-                }
+                // Aplica los archivos YAML usando el microk8s de la VPS
+                sh "sudo microk8s kubectl apply -f Docker/proyectos/mi_Portfolio/deploy/kubernetes/"
+                // Fuerza el reinicio para que cargue la nueva imagen
+                sh "sudo microk8s kubectl rollout restart deployment deploy-miportfolio -n namespace-miportfolio"
             }
+        }
+    }
+
+    post {
+        success {
+            echo '¡Despliegue completado con éxito! Revisa la URL de tu portfolio.'
+        }
+        failure {
+            echo 'Algo ha fallado. Revisa los logs de la consola.'
         }
     }
 }
