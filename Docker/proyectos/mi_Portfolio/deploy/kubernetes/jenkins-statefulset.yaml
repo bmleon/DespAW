@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: jenkins
+  namespace: default
+spec:
+  # ... (resto de la configuración que ya tienes)
+  template:
+    spec:
+      containers:
+      - name: jenkins
+        # ... (tus imágenes y puertos)
+        volumeMounts:
+        - mountPath: /var/jenkins_home
+          name: jenkins-home
+        - mountPath: /var/run/docker.sock
+          name: docker-sock
+        - mountPath: /usr/bin/docker
+          name: docker-binary
+      volumes:
+      - name: jenkins-home
+        persistentVolumeClaim:
+          claimName: jenkins
+      - hostPath:
+          path: /var/run/docker.sock
+          type: ""
+        name: docker-sock
+      - hostPath:
+          path: /usr/bin/docker
+          type: ""
+        name: docker-binary
