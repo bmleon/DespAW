@@ -1,0 +1,7 @@
+apiVersion: v2
+name: gaia-tienda
+type: application
+version: 0.1.0
+- name: api-gateway
+  version: 1.0.0
+  repository: "https://example.com/charts"

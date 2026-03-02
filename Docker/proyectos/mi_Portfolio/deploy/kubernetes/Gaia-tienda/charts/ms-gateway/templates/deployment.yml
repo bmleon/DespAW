@@ -1,0 +1,28 @@
+{{- if .Values.enabled }}
+apiVersion: apps/v1 
+kind
+metadata:
+  name: ms-gateway-deployment
+  namespace: {{ .Release.Namespace }}
+spec:   
+    replicas: 1
+    selector:
+      matchLabels:
+        app: ms-gateway
+    template:
+        metadata:
+            labels:
+                app: ms-gateway
+            annotations:
+                checksum/config: {{ include (print $.Template.BasePath "/configmap.yml") . | sha256sum }}
+        spec:
+            containers:
+            - name: ms-gateway
+                image: "{{ .Values.app.image.repository }}:{{ .Values.app.image.tag }}"
+                imagePullPolicy: {{ .Values.app.image.pullPolicy }}
+                ports:
+                - containerPort: {{ .Values.app.containerPort }}
+                envFrom:
+                - configMapRef:
+                    name: ms-gateway-config
+{{- end }}

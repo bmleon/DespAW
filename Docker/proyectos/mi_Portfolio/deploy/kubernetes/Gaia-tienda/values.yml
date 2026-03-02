@@ -1,0 +1,16 @@
+global:
+  nats: 
+    url: "nats://nats:4222"
+  env:
+    REPO_GIT: "https://github.com/your-repo"
+    PORT: 3000
+  namespace: "Gaia-tienda"
+
+#infra-nats:
+ # enabled: true
+
+#ms-usuarios:
+#  enabled: true
+
+ms-gateway:
+  enabled: true

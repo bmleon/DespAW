@@ -1,0 +1,18 @@
+app:
+  image: 
+    repository: bmleon/gaia-ms-gateway
+    tag: latest
+    pullPolicy: Always
+  containerPort: 3000
+
+services:
+  types: NodePort
+  port: 3000
+  nodePort: 30080
+
+ingress:
+  enabled: true
+  className: nginx
+  hots: api.bmleon.es
+  path: /
+  pathType: Prefix
