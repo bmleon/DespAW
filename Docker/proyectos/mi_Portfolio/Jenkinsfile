@@ -39,7 +39,7 @@ pipeline {
 
         stage('Desplegar en Kubernetes') {
             steps {
-                sh "sudo microk8s kubectl rollout restart deployment ukiyo-admin -n default"
+                sh "/snap/bin/microk8s kubectl rollout restart deployment ukiyo-admin -n default"
             }
         }
     }
