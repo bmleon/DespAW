@@ -1,52 +1,72 @@
 pipeline {
-    agent any // Usa directamente el servidor donde corre Jenkins
+    agent any
 
     environment {
-        DOCKER_USER = 'bmleon'
-        IMAGE_NAME  = 'miportfolio'
+        // Configuramos las variables para facilitar cambios futuros
+        DOCKER_IMAGE = "bmleon/miportfolio:latest"
+        DOCKER_FILE  = "Docker/proyectos/mi_Portfolio/deploy/Dockerfile"
     }
 
     stages {
         stage('Limpiar Espacio') {
             steps {
-                // Borra imágenes antiguas para no llenar el disco de la VPS
-                sh "docker system prune -f || true"
+                script {
+                    echo "Eliminando contenedores y caché huérfana..."
+                    // El '|| true' evita que el pipeline se detenga si no hay nada que limpiar
+                    sh "docker system prune -f || true"
+                }
+            }
+        }
+
+        stage('Checkout SCM') {
+            steps {
+                // Descarga el código del repositorio configurado en el Job
+                checkout scm
             }
         }
 
         stage('Construir Imagen') {
             steps {
-                // Construye la imagen usando el Docker de la VPS
-                sh "docker build -t ${DOCKER_USER}/${IMAGE_NAME}:latest -f Docker/proyectos/mi_Portfolio/deploy/Dockerfile ."
+                script {
+                    echo "Construyendo imagen desde la raíz del proyecto..."
+                    // El punto '.' al final es CLAVE: permite que el Dockerfile vea la carpeta /src
+                    sh "docker build -t ${DOCKER_IMAGE} -f ${DOCKER_FILE} ."
+                }
             }
         }
 
         stage('Subir a Docker Hub') {
             steps {
-                // Usa las credenciales que ya tienes guardadas en Jenkins
-                withCredentials([usernamePassword(credentialsId: 'docker-hub-creds', passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER_VAR')]) {
-                    sh "echo \$DOCKER_PASS | docker login -u \$DOCKER_USER_VAR --password-stdin"
-                    sh "docker push ${DOCKER_USER}/${IMAGE_NAME}:latest"
+                script {
+                    echo "Subiendo imagen a Docker Hub..."
+                    // IMPORTANTE: Debes tener creada la credencial 'docker-hub-credentials' en Jenkins
+                    withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', 
+                                                    passwordVariable: 'DOCKER_HUB_PASSWORD', 
+                                                    usernameVariable: 'DOCKER_HUB_USER')]) {
+                        sh "echo \$DOCKER_HUB_PASSWORD | docker login -u \$DOCKER_HUB_USER --password-stdin"
+                        sh "docker push ${DOCKER_IMAGE}"
+                    }
                 }
             }
         }
 
         stage('Desplegar en Kubernetes') {
             steps {
-                // Aplica los archivos YAML usando el microk8s de la VPS
-                sh "sudo microk8s kubectl apply -f Docker/proyectos/mi_Portfolio/deploy/kubernetes/"
-                // Fuerza el reinicio para que cargue la nueva imagen
-                sh "sudo microk8s kubectl rollout restart deployment deploy-miportfolio -n namespace-miportfolio"
+                script {
+                    echo "Reiniciando el despliegue en MicroK8s..."
+                    // Esto fuerza a Kubernetes a descargar la nueva imagen 'latest'
+                    sh "sudo microk8s kubectl rollout restart deployment ukiyo-admin -n default"
+                }
             }
         }
     }
 
     post {
         success {
-            echo '¡Despliegue completado con éxito! Revisa la URL de tu portfolio.'
+            echo "✅ ¡Despliegue finalizado con éxito!"
         }
         failure {
-            echo 'Algo ha fallado. Revisa los logs de la consola.'
+            echo "❌ Error en el Pipeline. Revisa los logs de arriba."
         }
     }
 }
