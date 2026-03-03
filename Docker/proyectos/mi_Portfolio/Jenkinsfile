@@ -1,51 +1,45 @@
 pipeline {
-    agent any
+    agent {
+        kubernetes {
+            yaml '''
+            apiVersion: v1
+            kind: Pod
+            spec:
+              containers:
+              - name: docker-agent
+                image: docker:24-dind
+                securityContext:
+                  privileged: true
+                tty: true
+            '''
+        }
+    }
 
     environment {
         DOCKER_IMAGE = "bmleon/miportfolio:latest"
         PROJECT_DIR  = "Docker/proyectos/mi_Portfolio"
+        // Este entorno le dice al agente que use su propio Docker interno (DIND)
+        DOCKER_HOST = "tcp://localhost:2375"
     }
 
     stages {
-        stage('Limpiar Espacio') {
+        stage('Construir y Subir Imagen') {
             steps {
-                sh "docker system prune -f || true"
-            }
-        }
-
-        stage('Construir Imagen') {
-            steps {
-                script {
-                    dir("${PROJECT_DIR}") {
-                        echo "Construyendo imagen desde: ${PROJECT_DIR}"
-                        sh "docker build -t ${DOCKER_IMAGE} -f deploy/Dockerfile ."
+                container('docker-agent') {
+                    script {
+                        dir("${PROJECT_DIR}") {
+                            echo "Construyendo imagen..."
+                            // Ahora el agente Docker construirá sin quejarse
+                            sh "docker build -t ${DOCKER_IMAGE} -f deploy/Dockerfile ."
+                            
+                            withCredentials([usernamePassword(credentialsId: 'docker-hub-creds', passwordVariable: 'DOCKER_HUB_PASSWORD', usernameVariable: 'DOCKER_HUB_USER')]) {
+                                sh "echo \$DOCKER_HUB_PASSWORD | docker login -u \$DOCKER_HUB_USER --password-stdin"
+                                sh "docker push ${DOCKER_IMAGE}"
+                            }
+                        }
                     }
                 }
             }
         }
-
-        stage('Subir a Docker Hub') {
-            steps {
-                script {
-                    withCredentials([usernamePassword(credentialsId: 'docker-hub-creds', 
-                                                    passwordVariable: 'DOCKER_HUB_PASSWORD', 
-                                                    usernameVariable: 'DOCKER_HUB_USER')]) {
-                        sh "echo \$DOCKER_HUB_PASSWORD | docker login -u \$DOCKER_HUB_USER --password-stdin"
-                        sh "docker push ${DOCKER_IMAGE}"
-                    }
-                }
-            }
-        }
-
-        stage('Desplegar en Kubernetes') {
-            steps {
-                sh "/snap/bin/microk8s kubectl rollout restart deployment ukiyo-admin -n default"
-            }
-        }
-    }
-
-    post {
-        success { echo "✅ ¡Despliegue finalizado con éxito!" }
-        failure { echo "❌ Error en el Pipeline. Revisa los logs." }
     }
 }
