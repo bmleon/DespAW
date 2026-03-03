@@ -3,8 +3,8 @@ pipeline {
 
     environment {
         DOCKER_IMAGE = "bmleon/miportfolio:latest"
-        // Esta es la ruta relativa desde la RAÍZ del repo
-        DOCKER_FILE  = "Docker/proyectos/mi_Portfolio/deploy/Dockerfile"
+        // Ruta del proyecto desde la raíz del repo de Git
+        PROJECT_DIR  = "Docker/proyectos/mi_Portfolio"
     }
 
     stages {
@@ -17,9 +17,12 @@ pipeline {
         stage('Construir Imagen') {
             steps {
                 script {
-                    echo "Construyendo imagen desde la RAÍZ del repositorio..."
-                    // Forzamos el contexto a la raíz del espacio de trabajo de Jenkins
-                    sh "docker build -t ${DOCKER_IMAGE} -f ${DOCKER_FILE} ."
+                    // Nos movemos físicamente a la carpeta del proyecto
+                    dir("${PROJECT_DIR}") {
+                        echo "Construyendo imagen desde: ${PROJECT_DIR}"
+                        // El punto '.' ahora es la carpeta mi_Portfolio, donde está 'src'
+                        sh "docker build -t ${DOCKER_IMAGE} -f deploy/Dockerfile ."
+                    }
                 }
             }
         }
@@ -39,7 +42,7 @@ pipeline {
 
         stage('Desplegar en Kubernetes') {
             steps {
-                // He añadido 'sudo' por si tu Jenkins en la VPS lo necesita para kubectl
+                // Forzamos el reinicio para que MicroK8s descargue la nueva versión
                 sh "sudo microk8s kubectl rollout restart deployment ukiyo-admin -n default"
             }
         }

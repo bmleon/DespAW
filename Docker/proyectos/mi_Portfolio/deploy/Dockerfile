@@ -1,19 +1,27 @@
-#partimos de una imagen base de ubuntu
+# Partimos de una imagen base de ubuntu
 FROM ubuntu 
+
+# Evitar prompts interactivos durante la instalación
+ENV DEBIAN_FRONTEND=noninteractive
+
 RUN apt update && apt install -yq --no-install-recommends \
      apache2 \
      curl \
      nano \
-     net-tools iputils-ping
+     net-tools iputils-ping \
+     && apt clean && rm -rf /var/lib/apt/lists/*
+
 RUN useradd -rm -d /home/belen -s /bin/bash belen
-# para crear el password usamos el comando chpasswd
 RUN echo "belen:belen" | chpasswd
 
-#establece el directorio de trabajo dentro del contenedor Apache
+# Establece el directorio de trabajo
 WORKDIR /var/www/html
-#copiamos el contenido del directorio src (relativo al contexto de docker) al directorio de trabajo del contenedor
-COPY ./src .
-#activamos el puerto 80 de apache
+
+# Al construir desde 'mi_Portfolio', la carpeta 'src' está al alcance directo
+COPY src/ .
+
+# Activamos el puerto 80
 EXPOSE 80
-#ejecutamos apache en primer plano cuando se inicie el contenedor
-CMD apachectl -DFOREGROUND
+
+# Ejecutamos apache en primer plano
+CMD ["apachectl", "-D", "FOREGROUND"]
