@@ -2,34 +2,23 @@ pipeline {
     agent any
 
     environment {
-        // Configuramos las variables para facilitar cambios futuros
         DOCKER_IMAGE = "bmleon/miportfolio:latest"
+        // Esta es la ruta relativa desde la RAÍZ del repo
         DOCKER_FILE  = "Docker/proyectos/mi_Portfolio/deploy/Dockerfile"
     }
 
     stages {
         stage('Limpiar Espacio') {
             steps {
-                script {
-                    echo "Eliminando contenedores y caché huérfana..."
-                    // El '|| true' evita que el pipeline se detenga si no hay nada que limpiar
-                    sh "docker system prune -f || true"
-                }
-            }
-        }
-
-        stage('Checkout SCM') {
-            steps {
-                // Descarga el código del repositorio configurado en el Job
-                checkout scm
+                sh "docker system prune -f || true"
             }
         }
 
         stage('Construir Imagen') {
             steps {
                 script {
-                    echo "Construyendo imagen desde la raíz del proyecto..."
-                    // El punto '.' al final es CLAVE: permite que el Dockerfile vea la carpeta /src
+                    echo "Construyendo imagen desde la RAÍZ del repositorio..."
+                    // Forzamos el contexto a la raíz del espacio de trabajo de Jenkins
                     sh "docker build -t ${DOCKER_IMAGE} -f ${DOCKER_FILE} ."
                 }
             }
@@ -38,8 +27,6 @@ pipeline {
         stage('Subir a Docker Hub') {
             steps {
                 script {
-                    echo "Subiendo imagen a Docker Hub..."
-                    // IMPORTANTE: Debes tener creada la credencial 'docker-hub-credentials' en Jenkins
                     withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', 
                                                     passwordVariable: 'DOCKER_HUB_PASSWORD', 
                                                     usernameVariable: 'DOCKER_HUB_USER')]) {
@@ -52,21 +39,14 @@ pipeline {
 
         stage('Desplegar en Kubernetes') {
             steps {
-                script {
-                    echo "Reiniciando el despliegue en MicroK8s..."
-                    // Esto fuerza a Kubernetes a descargar la nueva imagen 'latest'
-                    sh "sudo microk8s kubectl rollout restart deployment ukiyo-admin -n default"
-                }
+                // He añadido 'sudo' por si tu Jenkins en la VPS lo necesita para kubectl
+                sh "sudo microk8s kubectl rollout restart deployment ukiyo-admin -n default"
             }
         }
     }
 
     post {
-        success {
-            echo "✅ ¡Despliegue finalizado con éxito!"
-        }
-        failure {
-            echo "❌ Error en el Pipeline. Revisa los logs de arriba."
-        }
+        success { echo "✅ ¡Despliegue finalizado con éxito!" }
+        failure { echo "❌ Error en el Pipeline. Revisa los logs." }
     }
 }
