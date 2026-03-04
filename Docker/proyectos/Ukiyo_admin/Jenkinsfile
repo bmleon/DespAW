@@ -30,7 +30,6 @@ pipeline {
     environment {
         DOCKER_IMAGE = "bmleon/adminukiyo:latest"
         PROJECT_DIR  = "Docker/proyectos/admin_ukiyo"
-        K8S_DIR      = "Docker/proyectos/admin_ukiyo/deploy/kubernetes"
         DOCKER_HOST  = "tcp://localhost:2375"
     }
 
@@ -43,11 +42,11 @@ pipeline {
                         sh 'while ! docker info >/dev/null 2>&1; do sleep 2; done'
                         
                         dir("${PROJECT_DIR}") {
-                            echo "Construyendo la imagen del panel de admin..."
+                            echo "Construyendo la imagen desde la raíz del proyecto..."
+                            // Buscamos el Dockerfile dentro de deploy/
                             sh "docker build -t ${DOCKER_IMAGE} -f deploy/Dockerfile ."
                             
                             echo "Subiendo imagen a Docker Hub..."
-                            // Usando exactamente tu ID de credenciales anterior
                             withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', 
                                                             passwordVariable: 'DOCKER_HUB_PASSWORD', 
                                                             usernameVariable: 'DOCKER_HUB_USER')]) {
@@ -64,14 +63,13 @@ pipeline {
             steps {
                 container('kubectl') {
                     script {
-                        dir("${K8S_DIR}") {
-                            echo "Aplicando configuración de Kubernetes para el admin..."
+                        // Nos movemos a la subcarpeta de kubernetes
+                        dir("${PROJECT_DIR}/deploy/kubernetes") {
+                            echo "Aplicando configuración de Kubernetes..."
                             sh "kubectl apply -f namespace-admin.yml"
                             sh "kubectl apply -f deploy-admin.yml"
                             sh "kubectl apply -f service-admin.yml"
                             sh "kubectl apply -f ingress-admin.yml"
-                            
-                            echo "¡Configuración aplicada con éxito!"
                         }
                     }
                 }
@@ -81,10 +79,10 @@ pipeline {
 
     post {
         success { 
-            echo "✅ ¡Panel de Admin desplegado correctamente en http://admin-ukiyo.ukiyocazorla.es!" 
+            echo "✅ ¡Admin desplegado en http://admin-ukiyo.ukiyocazorla.es!" 
         }
         failure { 
-            echo "❌ Error en el despliegue. Revisa si el nombre de la carpeta admin_ukiyo es correcto." 
+            echo "❌ Error. Verifica que la ruta Docker/proyectos/admin_ukiyo sea correcta." 
         }
     }
 }
