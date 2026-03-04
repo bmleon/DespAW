@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-admin-ukiyo
+  namespace: admin-ukiyo
+spec:
+  selector:
+    app: admin-ukiyo
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 3000
+  type: ClusterIP

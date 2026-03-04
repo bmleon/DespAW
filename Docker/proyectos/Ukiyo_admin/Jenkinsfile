@@ -1,0 +1,90 @@
+pipeline {
+    agent {
+        kubernetes {
+            yaml '''
+            apiVersion: v1
+            kind: Pod
+            spec:
+              containers:
+              - name: docker-client
+                image: docker:24-cli
+                command: ['cat']
+                tty: true
+              - name: docker-daemon
+                image: docker:24-dind
+                securityContext:
+                  privileged: true
+                env:
+                - name: DOCKER_TLS_CERTDIR
+                  value: ""
+              - name: kubectl
+                image: bitnami/kubectl:latest
+                command: ['cat']
+                tty: true
+                securityContext:
+                  runAsUser: 0
+            '''
+        }
+    }
+
+    environment {
+        DOCKER_IMAGE = "bmleon/adminukiyo:latest"
+        PROJECT_DIR  = "Docker/proyectos/admin_ukiyo"
+        K8S_DIR      = "Docker/proyectos/admin_ukiyo/deploy/kubernetes"
+        DOCKER_HOST  = "tcp://localhost:2375"
+    }
+
+    stages {
+        stage('Construir y Subir Imagen Admin') {
+            steps {
+                container('docker-client') {
+                    script {
+                        echo "Iniciando motor Docker..."
+                        sh 'while ! docker info >/dev/null 2>&1; do sleep 2; done'
+                        
+                        dir("${PROJECT_DIR}") {
+                            echo "Construyendo la imagen del panel de admin..."
+                            sh "docker build -t ${DOCKER_IMAGE} -f deploy/Dockerfile ."
+                            
+                            echo "Subiendo imagen a Docker Hub..."
+                            // Usando exactamente tu ID de credenciales anterior
+                            withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', 
+                                                            passwordVariable: 'DOCKER_HUB_PASSWORD', 
+                                                            usernameVariable: 'DOCKER_HUB_USER')]) {
+                                sh "echo \$DOCKER_HUB_PASSWORD | docker login -u \$DOCKER_HUB_USER --password-stdin"
+                                sh "docker push ${DOCKER_IMAGE}"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Desplegar Admin en Kubernetes') {
+            steps {
+                container('kubectl') {
+                    script {
+                        dir("${K8S_DIR}") {
+                            echo "Aplicando configuración de Kubernetes para el admin..."
+                            sh "kubectl apply -f namespace-admin.yml"
+                            sh "kubectl apply -f deploy-admin.yml"
+                            sh "kubectl apply -f service-admin.yml"
+                            sh "kubectl apply -f ingress-admin.yml"
+                            
+                            echo "¡Configuración aplicada con éxito!"
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        success { 
+            echo "✅ ¡Panel de Admin desplegado correctamente en http://admin-ukiyo.ukiyocazorla.es!" 
+        }
+        failure { 
+            echo "❌ Error en el despliegue. Revisa si el nombre de la carpeta admin_ukiyo es correcto." 
+        }
+    }
+}

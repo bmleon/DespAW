@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nuxt-admin-ukiyo
+  namespace: admin-ukiyo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: admin-ukiyo
+  template:
+    metadata:
+      labels:
+        app: admin-ukiyo
+    spec:
+      containers:
+      - name: nuxt-admin
+        image: bmleon/adminukiyo:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3000
+        env:
+        # Aquí conectamos el admin con el dominio principal
+        - name: NUXT_PUBLIC_API_BASE
+          value: "http://ukiyocazorla.es"

@@ -1,0 +1,19 @@
+# Dependencias locales
+node_modules/
+
+# Carpetas de compilación locales de Nuxt
+.nuxt/
+.output/
+
+# Archivos de entorno y secretos
+.env
+
+# Control de versiones y configuración de CI/CD
+.git/
+Jenkinsfile
+deploy/
+
+# Archivos de logs
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
