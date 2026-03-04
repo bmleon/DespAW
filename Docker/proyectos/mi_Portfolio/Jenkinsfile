@@ -6,11 +6,17 @@ pipeline {
             kind: Pod
             spec:
               containers:
-              - name: docker-agent
+              - name: docker-client
+                image: docker:24-cli
+                command: ['cat']
+                tty: true
+              - name: docker-daemon
                 image: docker:24-dind
                 securityContext:
                   privileged: true
-                tty: true
+                env:
+                - name: DOCKER_TLS_CERTDIR
+                  value: ""
             '''
         }
     }
@@ -18,28 +24,40 @@ pipeline {
     environment {
         DOCKER_IMAGE = "bmleon/miportfolio:latest"
         PROJECT_DIR  = "Docker/proyectos/mi_Portfolio"
-        // Este entorno le dice al agente que use su propio Docker interno (DIND)
-        DOCKER_HOST = "tcp://localhost:2375"
+        DOCKER_HOST  = "tcp://localhost:2375"
     }
 
     stages {
         stage('Construir y Subir Imagen') {
             steps {
-                container('docker-agent') {
+                container('docker-client') {
                     script {
+                        // Esperamos a que el motor de Docker esté listo
+                        echo "Iniciando motor Docker..."
+                        sh 'while ! docker info >/dev/null 2>&1; do sleep 2; done'
+                        
                         dir("${PROJECT_DIR}") {
-                            echo "Construyendo imagen..."
-                            // Ahora el agente Docker construirá sin quejarse
+                            echo "Construyendo la imagen..."
                             sh "docker build -t ${DOCKER_IMAGE} -f deploy/Dockerfile ."
                             
-                            withCredentials([usernamePassword(credentialsId: 'docker-hub-creds', passwordVariable: 'DOCKER_HUB_PASSWORD', usernameVariable: 'DOCKER_HUB_USER')]) {
-                                sh "echo \$DOCKER_HUB_PASSWORD | docker login -u \$DOCKER_HUB_USER --password-stdin"
+                            echo "Subiendo imagen a Docker Hub..."
+                            withCredentials([usernamePassword(credentialsId: 'docker-hub-creds', passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER')]) {
+                                sh "echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin"
                                 sh "docker push ${DOCKER_IMAGE}"
                             }
                         }
                     }
                 }
             }
+        }
+    }
+
+    post {
+        success { 
+            echo "✅ ¡Imagen construida y subida con éxito a Docker Hub!" 
+        }
+        failure { 
+            echo "❌ Error en el Pipeline. Revisa los logs." 
         }
     }
 }
