@@ -1,35 +1,10 @@
 pipeline {
-    agent {
-        kubernetes {
-            yaml '''
-            apiVersion: v1
-            kind: Pod
-            spec:
-              containers:
-              - name: docker-client
-                image: docker:24-cli
-                command: ['cat']
-                tty: true
-              - name: docker-daemon
-                image: docker:24-dind
-                securityContext:
-                  privileged: true
-                env:
-                - name: DOCKER_TLS_CERTDIR
-                  value: ""
-              - name: kubectl
-                image: bitnami/kubectl:latest
-                command: ['cat']
-                tty: true
-                securityContext:
-                  runAsUser: 0
-            '''
-        }
-    }
+    // ... (la parte del agent kubernetes se queda igual) ...
 
     environment {
         DOCKER_IMAGE = "bmleon/adminukiyo:latest"
-        PROJECT_DIR  = "Docker/proyectos/admin_ukiyo"
+        // ACTUALIZADO: Nombre exacto de tu carpeta
+        PROJECT_DIR  = "Docker/proyectos/Ukiyo_admin"
         DOCKER_HOST  = "tcp://localhost:2375"
     }
 
@@ -42,8 +17,7 @@ pipeline {
                         sh 'while ! docker info >/dev/null 2>&1; do sleep 2; done'
                         
                         dir("${PROJECT_DIR}") {
-                            echo "Construyendo la imagen desde la raíz del proyecto..."
-                            // Buscamos el Dockerfile dentro de deploy/
+                            echo "Construyendo la imagen desde Ukiyo_admin..."
                             sh "docker build -t ${DOCKER_IMAGE} -f deploy/Dockerfile ."
                             
                             echo "Subiendo imagen a Docker Hub..."
@@ -63,9 +37,9 @@ pipeline {
             steps {
                 container('kubectl') {
                     script {
-                        // Nos movemos a la subcarpeta de kubernetes
+                        // ACTUALIZADO: Ruta de kubernetes
                         dir("${PROJECT_DIR}/deploy/kubernetes") {
-                            echo "Aplicando configuración de Kubernetes..."
+                            echo "Aplicando configuración de Kubernetes para el Admin..."
                             sh "kubectl apply -f namespace-admin.yml"
                             sh "kubectl apply -f deploy-admin.yml"
                             sh "kubectl apply -f service-admin.yml"
@@ -76,13 +50,5 @@ pipeline {
             }
         }
     }
-
-    post {
-        success { 
-            echo "✅ ¡Admin desplegado en http://admin-ukiyo.ukiyocazorla.es!" 
-        }
-        failure { 
-            echo "❌ Error. Verifica que la ruta Docker/proyectos/admin_ukiyo sea correcta." 
-        }
-    }
+    // ... (el resto del post se queda igual) ...
 }
