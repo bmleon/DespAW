@@ -1,0 +1,19 @@
+# Dependencias locales (¡Lo más importante para ahorrar peso!)
+node_modules/
+
+# Carpetas de compilación locales de Nuxt
+.nuxt/
+.output/
+
+# Archivos de entorno y secretos (Seguridad)
+.env
+
+# Control de versiones y configuración de CI/CD
+.git/
+Jenkinsfile
+deploy/
+
+# Archivos de logs de errores
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*

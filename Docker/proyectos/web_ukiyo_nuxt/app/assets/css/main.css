@@ -1,0 +1,51 @@
+/* 1. Directivas obligatorias de Tailwind */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 2. Estilos Base Globales (Se aplican a toda la web) */
+@layer base {
+  html {
+    scroll-behavior: smooth; /* Desplazamiento suave al pulsar enlaces */
+    -webkit-tap-highlight-color: transparent; /* Quita el brillo azul al tocar en móvil */
+  }
+
+  body {
+    /* Fuente por defecto y suavizado de texto */
+    @apply font-sans antialiased;
+    
+    /* Transición suave de colores al cambiar de tema (Efecto Premium) */
+    @apply transition-colors duration-300;
+
+    /* Estilos por defecto (Modo Claro: Fondo gris suave) */
+    @apply bg-gray-50 text-gray-900;
+  }
+
+  /* Estilos para Modo Oscuro (Fondo Negro Ukiyo) */
+  .dark body {
+    @apply bg-ukiyo-dark text-white;
+  }
+
+  /* Títulos (H1, H2...) se adaptan automáticamente */
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-gray-900 dark:text-white transition-colors duration-300;
+  }
+
+  /* Párrafos */
+  p {
+    @apply text-gray-600 dark:text-gray-400 transition-colors duration-300;
+  }
+}
+
+/* 3. Utilidades Personalizadas */
+@layer utilities {
+  /* Clase para ocultar la barra de scroll (útil para menús horizontales) */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .no-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+}

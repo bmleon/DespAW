@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nuxt-web-cliente
+  namespace: web-cliente
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web-cliente
+  template:
+    metadata:
+      labels:
+        app: web-cliente
+    spec:
+      containers:
+      - name: nuxt-frontend
+        image: bmleon/webcliente:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3000
+        env:
+        # Aquí inyectamos el dominio de producción para tu admin
+        - name: NUXT_PUBLIC_API_BASE
+          value: "http://ukiyocazorla.es"
