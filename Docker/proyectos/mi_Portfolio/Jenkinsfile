@@ -6,10 +6,12 @@ pipeline {
             kind: Pod
             spec:
               containers:
+              # 1. El cliente de Docker
               - name: docker-client
                 image: docker:24-cli
                 command: ['cat']
                 tty: true
+              # 2. El motor de Docker
               - name: docker-daemon
                 image: docker:24-dind
                 securityContext:
@@ -17,6 +19,13 @@ pipeline {
                 env:
                 - name: DOCKER_TLS_CERTDIR
                   value: ""
+              # 3. El cliente de Kubernetes (NUEVO)
+              - name: kubectl
+                image: bitnami/kubectl:latest
+                command: ['cat']
+                tty: true
+                securityContext:
+                  runAsUser: 0
             '''
         }
     }
@@ -24,6 +33,7 @@ pipeline {
     environment {
         DOCKER_IMAGE = "bmleon/miportfolio:latest"
         PROJECT_DIR  = "Docker/proyectos/mi_Portfolio"
+        K8S_DIR      = "Docker/proyectos/mi_Portfolio/deploy/kubernetes"
         DOCKER_HOST  = "tcp://localhost:2375"
     }
 
@@ -32,7 +42,6 @@ pipeline {
             steps {
                 container('docker-client') {
                     script {
-                        // Esperamos a que el motor de Docker esté listo
                         echo "Iniciando motor Docker..."
                         sh 'while ! docker info >/dev/null 2>&1; do sleep 2; done'
                         
@@ -50,11 +59,32 @@ pipeline {
                 }
             }
         }
+
+        stage('Desplegar en Kubernetes') {
+            steps {
+                // Ahora usamos el contenedor de kubectl
+                container('kubectl') {
+                    script {
+                        dir("${K8S_DIR}") {
+                            echo "Aplicando configuración de Kubernetes..."
+                            // Aplicamos solo los archivos de tu portfolio, ignorando Jenkins y Gaia
+                            sh "kubectl apply -f namespace-miportfolio.yml"
+                            sh "kubectl apply -f configMap-miportfolio.yaml"
+                            sh "kubectl apply -f deploy-miportfolio.yml"
+                            sh "kubectl apply -f service-miportfolio.yml"
+                            sh "kubectl apply -f ingress-miportfolio.yml"
+                            
+                            echo "¡Archivos aplicados correctamente!"
+                        }
+                    }
+                }
+            }
+        }
     }
 
     post {
         success { 
-            echo "✅ ¡Imagen construida y subida con éxito a Docker Hub!" 
+            echo "✅ ¡Portfolio construido, subido y DESPLEGADO con éxito en Kubernetes!" 
         }
         failure { 
             echo "❌ Error en el Pipeline. Revisa los logs." 
