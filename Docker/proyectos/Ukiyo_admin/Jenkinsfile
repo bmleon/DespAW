@@ -1,9 +1,34 @@
 pipeline {
-    // ... (la parte del agent kubernetes se queda igual) ...
+    agent {
+        kubernetes {
+            yaml '''
+            apiVersion: v1
+            kind: Pod
+            spec:
+              containers:
+              - name: docker-client
+                image: docker:24-cli
+                command: ['cat']
+                tty: true
+              - name: docker-daemon
+                image: docker:24-dind
+                securityContext:
+                  privileged: true
+                env:
+                - name: DOCKER_TLS_CERTDIR
+                  value: ""
+              - name: kubectl
+                image: bitnami/kubectl:latest
+                command: ['cat']
+                tty: true
+                securityContext:
+                  runAsUser: 0
+            '''
+        }
+    }
 
     environment {
         DOCKER_IMAGE = "bmleon/adminukiyo:latest"
-        // ACTUALIZADO: Nombre exacto de tu carpeta
         PROJECT_DIR  = "Docker/proyectos/Ukiyo_admin"
         DOCKER_HOST  = "tcp://localhost:2375"
     }
@@ -37,7 +62,6 @@ pipeline {
             steps {
                 container('kubectl') {
                     script {
-                        // ACTUALIZADO: Ruta de kubernetes
                         dir("${PROJECT_DIR}/deploy/kubernetes") {
                             echo "Aplicando configuración de Kubernetes para el Admin..."
                             sh "kubectl apply -f namespace-admin.yml"
@@ -50,5 +74,13 @@ pipeline {
             }
         }
     }
-    // ... (el resto del post se queda igual) ...
+
+    post {
+        success { 
+            echo "✅ ¡Panel de Admin desplegado correctamente!" 
+        }
+        failure { 
+            echo "❌ Error en el despliegue del Admin. Revisa los logs." 
+        }
+    }
 }
