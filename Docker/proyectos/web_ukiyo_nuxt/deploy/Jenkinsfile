@@ -28,9 +28,7 @@ pipeline {
     }
 
     environment {
-        // Nombre de la imagen en Docker Hub
         DOCKER_IMAGE = "bmleon/webcliente:latest"
-        // Rutas exactas a tu nueva carpeta en GitHub
         PROJECT_DIR  = "Docker/proyectos/web_ukiyo_nuxt"
         K8S_DIR      = "Docker/proyectos/web_ukiyo_nuxt/deploy/kubernetes"
         DOCKER_HOST  = "tcp://localhost:2375"
@@ -46,12 +44,13 @@ pipeline {
                         
                         dir("${PROJECT_DIR}") {
                             echo "Construyendo la imagen de la tienda..."
-                            // Usa el Dockerfile específico de Nuxt
                             sh "docker build -t ${DOCKER_IMAGE} -f deploy/Dockerfile ."
                             
                             echo "Subiendo imagen a Docker Hub..."
-                            withCredentials([usernamePassword(credentialsId: 'docker-hub-creds', passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER')]) {
-                                sh "echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin"
+                            withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', 
+                                                            passwordVariable: 'DOCKER_HUB_PASSWORD', 
+                                                            usernameVariable: 'DOCKER_HUB_USER')]) {
+                                sh "echo \$DOCKER_HUB_PASSWORD | docker login -u \$DOCKER_HUB_USER --password-stdin"
                                 sh "docker push ${DOCKER_IMAGE}"
                             }
                         }
@@ -65,13 +64,15 @@ pipeline {
                 container('kubectl') {
                     script {
                         dir("${K8S_DIR}") {
-                            echo "Aplicando configuración de Kubernetes para la tienda..."
+                            echo "Aplicando configuración de Kubernetes..."
                             sh "kubectl apply -f namespace-webcliente.yml"
                             sh "kubectl apply -f deploy-webcliente.yml"
                             sh "kubectl apply -f service-webcliente.yml"
                             sh "kubectl apply -f ingress-webcliente.yml"
                             
-                            echo "¡Archivos aplicados correctamente!"
+                            echo "Forzando reinicio del pod para aplicar cambios de perfil.vue..."
+                            // Esta línea asegura que el código viejo se borre del servidor
+                            sh "kubectl rollout restart deployment nuxt-web-cliente -n web-cliente"
                         }
                     }
                 }
@@ -81,10 +82,10 @@ pipeline {
 
     post {
         success { 
-            echo "✅ ¡Tienda Nuxt construida, subida y DESPLEGADA con éxito en Kubernetes!" 
+            echo "✅ ¡Tienda actualizada! Recuerda pulsar CTRL+F5 en el navegador para ver los cambios." 
         }
         failure { 
-            echo "❌ Error en el Pipeline. Revisa los logs." 
+            echo "❌ Error en el despliegue. Revisa los logs de construcción." 
         }
     }
 }
