@@ -8,7 +8,7 @@ const API_URL = 'http://ukiyocazorla.es/api';
 // Campos del formulario
 const username = ref('');
 const email = ref(''); 
-const password = ref(''); // Nuevo campo para la contraseña
+const password = ref(''); 
 
 // Estados de la interfaz
 const isLoading = ref(false);
@@ -22,7 +22,7 @@ onMounted(() => {
   if (!authStore.isAuthenticated) {
     navigateTo('/login');
   } else {
-    // Rellenamos con los datos actuales
+    // Rellenamos con los datos actuales de la memoria de Pinia
     username.value = authStore.user?.profile?.username || authStore.user?.username || '';
     email.value = authStore.user?.email || '';
   }
@@ -38,38 +38,35 @@ const updateProfile = async () => {
       'Authorization': `Bearer ${authStore.token}`
     };
 
-    // 1. ACTUALIZAR SEGURIDAD (Email y/o Contraseña) en el modelo Usuario
     const userId = authStore.user?.id;
-    const bodyUsuario: any = { email: email.value };
     
-    // Solo mandamos la contraseña si el usuario ha escrito una nueva
+    // 1. PREPARAMOS EL CUERPO ÚNICO 
+    // Enviamos email y username juntos al microservicio de usuarios
+    const bodyUsuario: any = { 
+      email: email.value,
+      username: username.value 
+    };
+    
+    // Solo mandamos la contraseña si el usuario ha escrito algo
     if (password.value.trim() !== '') {
       bodyUsuario.password = password.value;
     }
 
-    // Suponemos que la ruta para editar al usuario es PATCH /usuarios/:id
+    // 2. PETICIÓN ÚNICA AL ENDPOINT DE USUARIOS
+    // Eliminamos /api/perfiles para evitar el error 400 Bad Request
     await $fetch(`${API_URL}/usuarios/${userId}`, {
       method: 'PATCH',
       headers,
       body: bodyUsuario
     });
 
-    // 2. ACTUALIZAR IDENTIDAD (Nombre de usuario) en el modelo Perfil
-    await $fetch(`${API_URL}/perfiles`, {
-      method: 'PATCH',
-      headers,
-      body: {
-        username: username.value
-      }
-    });
-
-    // Si todo va bien, actualizamos la "memoria" de la web (Pinia y LocalStorage)
+    // 3. ACTUALIZAR MEMORIA LOCAL (Pinia y LocalStorage) para que los cambios se vean ya
     if (authStore.user) {
       authStore.user.email = email.value;
+      authStore.user.username = username.value;
+      
       if (authStore.user.profile) {
         authStore.user.profile.username = username.value;
-      } else {
-        authStore.user.username = username.value;
       }
       
       if (typeof window !== 'undefined') {
@@ -78,13 +75,13 @@ const updateProfile = async () => {
     }
 
     successMessage.value = '¡Tus datos se han actualizado con éxito!';
-    password.value = ''; // Vaciamos la contraseña por seguridad visual
+    password.value = ''; // Limpiamos el campo de contraseña
     
     setTimeout(() => { successMessage.value = ''; }, 4000);
 
   } catch (error: any) {
     console.error('Error al actualizar:', error);
-    let msg = error.data?.message || 'Error al guardar los cambios. Revisa la conexión.';
+    let msg = error.data?.message || 'Error al guardar los cambios. Revisa los datos.';
     if (Array.isArray(msg)) msg = msg.join(', ');
     errorMessage.value = msg;
   } finally {
