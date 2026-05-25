@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
+import { ApiContactoRepository } from '~/infrastructure/repositories/ApiContactoRepository';
+import type { MensajeContacto } from '~/core/domain/contacto.model';
 
 // SEO: Configuración de metadatos para la página de contacto
 useHead({
@@ -7,9 +9,11 @@ useHead({
   meta: [
     { name: 'description', content: 'Contacta con Ukiyo en Cazorla. Encuentra nuestra ubicación, teléfono y envíanos tus dudas sobre nuestra cocina japonesa, alérgenos o pedidos especiales.' }
   ]
-})
+});
 
-// Datos del formulario reactivos
+const contactoRepository = new ApiContactoRepository();
+
+// Datos del formulario reactivos (Mantenemos nombres para tu HTML)
 const form = ref({
   name: '',
   email: '',
@@ -25,6 +29,7 @@ const errors = ref({
 
 const isSubmitting = ref(false);
 const showSuccess = ref(false);
+const showError = ref(false);
 
 // --- VALIDACIONES EN TIEMPO REAL ---
 const validateName = () => {
@@ -50,14 +55,26 @@ const validateAll = (): boolean => {
   return !Object.values(errors.value).some(error => error !== '');
 };
 
-// Función de envío simulada
-const submitForm = () => {
+// --- FUNCIÓN DE ENVÍO CONECTADA AL REPOSITORIO ---
+const submitForm = async () => {
   if (!validateAll()) return;
 
   isSubmitting.value = true;
-  // Simulación de proceso
-  setTimeout(() => {
-    isSubmitting.value = false;
+  showError.value = false;
+
+  // Data Mapper: Traducimos tu objeto local al contrato oficial del Dominio
+  const mensajeParaEnviar: MensajeContacto = {
+    nombre: form.value.name,
+    email: form.value.email,
+    asunto: 'Mensaje desde Formulario de Contacto Web', 
+    mensaje: form.value.message
+  };
+
+  // Petición real al API Gateway
+  const exito = await contactoRepository.enviarMensaje(mensajeParaEnviar);
+  isSubmitting.value = false;
+
+  if (exito) {
     showSuccess.value = true;
     
     // Resetear formulario y errores
@@ -66,12 +83,14 @@ const submitForm = () => {
     
     // Ocultar mensaje de éxito tras 5 segundos
     setTimeout(() => showSuccess.value = false, 5000);
-  }, 1500);
+  } else {
+    showError.value = true;
+  }
 };
 </script>
 
 <template>
-  <div class="pb-20">
+  <div class="pb-20 bg-gray-50 dark:bg-ukiyo-dark transition-colors duration-300 min-h-screen">
     
     <div class="relative bg-white dark:bg-ukiyo-nav py-20 border-b border-gray-200 dark:border-gray-800 overflow-hidden">
       <div class="absolute top-0 right-0 opacity-[0.03] dark:opacity-[0.05] pointer-events-none transform translate-x-1/3 -translate-y-1/4">
@@ -125,7 +144,7 @@ const submitForm = () => {
         </div>
       </div>
 
-      <div class="bg-white dark:bg-ukiyo-nav p-8 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-800 relative">
+      <div class="bg-white dark:bg-ukiyo-nav p-8 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-800 relative overflow-hidden">
         <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-6 border-b-2 border-ukiyo-gold inline-block pb-1 uppercase tracking-tighter">Envíanos un mensaje</h3>
         
         <form @submit.prevent="submitForm" class="space-y-6" novalidate>
@@ -154,6 +173,10 @@ const submitForm = () => {
             <p class="text-[10px] text-red-500 font-bold mt-1.5 uppercase tracking-tight min-h-[1rem]" aria-live="polite">{{ errors.message }}</p>
           </div>
 
+          <p v-if="showError" class="text-xs text-red-500 font-bold uppercase tracking-tight text-center">
+            ❌ No se pudo enviar el mensaje. Revisa la conexión de red.
+          </p>
+
           <button type="submit" :disabled="isSubmitting" 
             class="w-full py-4 bg-ukiyo-gold text-black font-black uppercase tracking-widest rounded-lg hover:shadow-lg hover:-translate-y-1 transition-all disabled:opacity-50 flex justify-center items-center gap-2">
             <span v-if="isSubmitting">Enviando...</span>
@@ -170,7 +193,7 @@ const submitForm = () => {
               <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
             </div>
             <h3 class="text-2xl font-black text-gray-900 dark:text-white uppercase mb-2">¡Mensaje Enviado!</h3>
-            <p class="text-gray-600 dark:text-gray-400">Te responderemos muy pronto.</p>
+            <p class="text-gray-600 dark:text-gray-400">Hemos recibido tu consulta de forma segura. Te responderemos muy pronto.</p>
           </div>
         </transition>
 
@@ -178,3 +201,7 @@ const submitForm = () => {
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Estilos vacíos aislados para encapsular correctamente */
+</style>

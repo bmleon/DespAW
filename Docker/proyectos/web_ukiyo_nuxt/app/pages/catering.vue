@@ -1,8 +1,17 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
+import { ApiCateringRepository } from '~/infrastructure/repositories/ApiCateringRepository';
+import { ValidarCateringUseCase } from '~/core/usecases/ValidarCateringUseCase';
+import type { SolicitudCatering } from '~/core/domain/catering.model';
 
 const localePath = useLocalePath();
 const { t } = useI18n();
+const cateringRepository = new ApiCateringRepository();
+
+// --- ESTADOS DE CONTROL DE ENVÍO ---
+const isSubmitting = ref(false);
+const showSuccess = ref(false);
+const showError = ref(false);
 
 // 1. Fotos de catering (.jpeg)
 const cateringImages = [
@@ -24,7 +33,6 @@ const prevSlide = () => {
   currentIndex.value = (currentIndex.value - 1 + cateringImages.length) % cateringImages.length;
 };
 
-// Lógica de temporizador automático
 const startTimer = () => {
   stopTimer();
   timer = setInterval(nextSlide, 4500); 
@@ -48,6 +56,7 @@ onUnmounted(() => {
   stopTimer();
 });
 
+// Reactivo del formulario visual
 const form = ref({
   nombre: '',
   email: '',
@@ -56,6 +65,54 @@ const form = ref({
   tipoEvento: 'corporate',
   detalles: ''
 });
+
+// --- ENVÍO DE DATOS AL BACKEND REAL (CON CIBERSEGURIDAD) ---
+const submitCatering = async () => {
+  isSubmitting.value = true;
+  showError.value = false;
+  showSuccess.value = false;
+
+  // 1. Mapeamos los datos brutos recibidos del formulario HTML
+  const datosBrutos: SolicitudCatering = {
+    nombre: form.value.nombre,
+    email: form.value.email,
+    fecha: form.value.fecha,
+    invitados: Number(form.value.invitados), // Forzamos conversión estricta a número
+    tipoEvento: form.value.tipoEvento,
+    detalles: form.value.detalles
+  };
+
+  // 2. Interceptamos y sanitizamos los datos con las reglas de ciberseguridad perimetral
+  const datosSanitizados = ValidarCateringUseCase.procesar(datosBrutos);
+
+  // Si no supera el filtro de seguridad (datos corruptos o maliciosos) cancelamos envío
+  if (!datosSanitizados) {
+    isSubmitting.value = false;
+    showError.value = true;
+    return;
+  }
+
+  // 3. Enviamos los datos completamente limpios a la capa de infraestructura
+  const exito = await cateringRepository.enviarSolicitud(datosSanitizados);
+  isSubmitting.value = false;
+
+  if (exito) {
+    showSuccess.value = true;
+    // Reseteamos el formulario a su estado original
+    form.value = {
+      nombre: '',
+      email: '',
+      fecha: '',
+      invitados: '',
+      tipoEvento: 'corporate',
+      detalles: ''
+    };
+    // Ocultamos la cortina de éxito tras 5 segundos
+    setTimeout(() => showSuccess.value = false, 5000);
+  } else {
+    showError.value = true;
+  }
+};
 </script>
 
 <template>
@@ -133,14 +190,15 @@ const form = ref({
     </div>
 
     <div class="max-w-3xl mx-auto px-4">
-      <div class="bg-white dark:bg-ukiyo-nav rounded-2xl shadow-xl border-t-4 border-ukiyo-gold p-8 md:p-12">
+      <div class="bg-white dark:bg-ukiyo-nav rounded-2xl shadow-xl border-t-4 border-ukiyo-gold p-8 md:p-12 relative overflow-hidden">
         <h2 class="text-3xl font-bold text-center text-gray-900 dark:text-white mb-10 uppercase tracking-tight">Solicita tu Presupuesto</h2>
-        <form @submit.prevent class="space-y-6">
+        
+        <form @submit.prevent="submitCatering" class="space-y-6">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <input v-model="form.nombre" type="text" placeholder="Nombre / Empresa" class="input-style">
-            <input v-model="form.email" type="email" placeholder="Email de contacto" class="input-style">
-            <input v-model="form.fecha" type="date" class="input-style">
-            <input v-model="form.invitados" type="number" placeholder="Nº Invitados" class="input-style">
+            <input v-model="form.nombre" type="text" placeholder="Nombre / Empresa" class="input-style" required>
+            <input v-model="form.email" type="email" placeholder="Email de contacto" class="input-style" required>
+            <input v-model="form.fecha" type="date" class="input-style" required>
+            <input v-model="form.invitados" type="number" placeholder="Nº Invitados" class="input-style" required>
           </div>
           <select v-model="form.tipoEvento" class="input-style">
             <option value="corporate">Evento Corporativo</option>
@@ -148,10 +206,27 @@ const form = ref({
             <option value="birthday">Fiesta Privada</option>
           </select>
           <textarea v-model="form.detalles" rows="4" class="input-style" placeholder="Cuéntanos más..."></textarea>
-          <button type="submit" class="w-full py-4 bg-ukiyo-gold hover:bg-white text-black font-black uppercase tracking-widest rounded-lg transition-all shadow-lg hover:scale-[1.01]">
-            Enviar Solicitud
+          
+          <p v-if="showError" class="text-xs text-red-500 font-bold uppercase tracking-tight text-center">
+            ❌ Hubo un error de formato o conexión con el servidor. Inténtalo de nuevo.
+          </p>
+
+          <button type="submit" :disabled="isSubmitting" class="w-full py-4 bg-ukiyo-gold hover:bg-white text-black font-black uppercase tracking-widest rounded-lg transition-all shadow-lg hover:scale-[1.01] disabled:opacity-50 flex justify-center items-center">
+            <span v-if="isSubmitting">Enviando...</span>
+            <span v-else>Enviar Solicitud</span>
           </button>
         </form>
+
+        <transition enter-active-class="transition duration-300" enter-from-class="opacity-0 scale-95" enter-to-class="opacity-100 scale-100">
+          <div v-if="showSuccess" class="absolute inset-0 bg-white/95 dark:bg-ukiyo-nav/95 z-40 flex flex-col items-center justify-center p-8 text-center rounded-2xl border-2 border-green-500">
+            <div class="w-16 h-16 bg-green-100 dark:bg-green-900/50 rounded-full flex items-center justify-center mb-6">
+              <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            </div>
+            <h3 class="text-2xl font-black text-gray-900 dark:text-white uppercase mb-2">¡Solicitud Recibida!</h3>
+            <p class="text-gray-600 dark:text-gray-400">Hemos guardado los detalles de tu evento. Te responderemos con un presupuesto personalizado muy pronto.</p>
+          </div>
+        </transition>
+
       </div>
     </div>
   </div>

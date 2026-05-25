@@ -28,52 +28,70 @@ pipeline {
     }
 
     environment {
-        DOCKER_IMAGE = "bmleon/webcliente:latest"
-        PROJECT_DIR  = "Docker/proyectos/web_ukiyo_nuxt"
-        K8S_DIR      = "Docker/proyectos/web_ukiyo_nuxt/deploy/kubernetes"
-        DOCKER_HOST  = "tcp://localhost:2375"
+        DOCKER_BASE_IMAGE = "bmleon/webcliente"
+        DOCKER_TAG        = "${BUILD_NUMBER}"
+        PROJECT_DIR       = "Docker/proyectos/web_ukiyo_nuxt"
+        K8S_DIR           = "Docker/proyectos/web_ukiyo_nuxt/deploy/kubernetes"
+        DOCKER_HOST       = "tcp://localhost:2375"
     }
 
     stages {
-        stage('Construir y Subir Imagen de Nuxt') {
+        stage('Validar Entorno y Motor') {
             steps {
                 container('docker-client') {
-                    script {
-                        echo "Iniciando motor Docker..."
-                        sh 'while ! docker info >/dev/null 2>&1; do sleep 2; done'
+                    echo "🛡️ Verificando estado del servicio interno de Docker..."
+                    sh 'while ! docker info >/dev/null 2>&1; do sleep 2; done'
+                    echo "✅ Motor listo para la compilación."
+                }
+            }
+        }
+
+        stage('Construir Imagen de Producción (Nuxt)') {
+            steps {
+                container('docker-client') {
+                    dir("${PROJECT_DIR}") {
+                        echo "🏗️ Iniciando Multi-Stage Build desde la carpeta deploy..."
                         
-                        dir("${PROJECT_DIR}") {
-                            echo "Construyendo la imagen de la tienda..."
-                            sh "docker build -t ${DOCKER_IMAGE} -f deploy/Dockerfile ."
-                            
-                            echo "Subiendo imagen a Docker Hub..."
-                            withCredentials([usernamePassword(credentialsId: 'docker-hub-creds', 
-                                                            passwordVariable: 'DOCKER_HUB_PASSWORD', 
-                                                            usernameVariable: 'DOCKER_HUB_USER')]) {
-                                sh "echo \$DOCKER_HUB_PASSWORD | docker login -u \$DOCKER_HUB_USER --password-stdin"
-                                sh "docker push ${DOCKER_IMAGE}"
-                            }
-                        }
+                        // CORREGIDO: Le indicamos explícitamente que busque el Dockerfile dentro de deploy/
+                        sh "docker build -t ${DOCKER_BASE_IMAGE}:${DOCKER_TAG} -t ${DOCKER_BASE_IMAGE}:latest -f deploy/Dockerfile ."
                     }
                 }
             }
         }
 
-        stage('Desplegar Tienda en Kubernetes') {
+        stage('Publicar en Docker Hub') {
+            steps {
+                container('docker-client') {
+                    echo "🔐 Autenticando en Docker Hub de manera segura..."
+                    withCredentials([usernamePassword(credentialsId: 'docker-hub-creds', 
+                                                     passwordVariable: 'DOCKER_HUB_PASSWORD', 
+                                                     usernameVariable: 'DOCKER_HUB_USER')]) {
+                        
+                        sh "echo \$DOCKER_HUB_PASSWORD | docker login -u \$DOCKER_HUB_USER --password-stdin"
+                        
+                        echo "🚀 Subiendo tags a la nube..."
+                        sh "docker push ${DOCKER_BASE_IMAGE}:${DOCKER_TAG}"
+                        sh "docker push ${DOCKER_BASE_IMAGE}:latest"
+                    }
+                }
+            }
+        }
+
+        stage('Desplegar en Cluster Kubernetes') {
             steps {
                 container('kubectl') {
-                    script {
-                        dir("${K8S_DIR}") {
-                            echo "Aplicando configuración de Kubernetes..."
-                            sh "kubectl apply -f namespace-webcliente.yml"
-                            sh "kubectl apply -f deploy-webcliente.yml"
-                            sh "kubectl apply -f service-webcliente.yml"
-                            sh "kubectl apply -f ingress-webcliente.yml"
-                            
-                            echo "Forzando reinicio del pod para aplicar cambios de perfil.vue..."
-                            // Esta línea asegura que el código viejo se borre del servidor
-                            sh "kubectl rollout restart deployment nuxt-web-cliente -n web-cliente"
-                        }
+                    dir("${K8S_DIR}") {
+                        echo "⚙️ Sincronizando manifiestos con el Orquestador..."
+                        sh "kubectl apply -f namespace-webcliente.yml"
+                        sh "kubectl apply -f deploy-webcliente.yml"
+                        sh "kubectl apply -f service-webcliente.yml"
+                        sh "kubectl apply -f ingress-webcliente.yml"
+                        
+                        echo "🔄 Ejecutando Rollout seguro para limpiar caché y actualizar la web..."
+                        sh "kubectl rollout restart deployment nuxt-web-cliente -n web-cliente"
+                        
+                        echo "⏳ Verificando que el nuevo pod levante correctamente..."
+                        sh "kubectl rollout status deployment nuxt-web-cliente -n web-cliente --timeout=90s"
                     }
                 }
             }
@@ -82,10 +100,10 @@ pipeline {
 
     post {
         success { 
-            echo "✅ ¡Tienda actualizada! Recuerda pulsar CTRL+F5 en el navegador para ver los cambios." 
+            echo "✅ ¡Despliegue Exitoso! Versión v${DOCKER_TAG} de Ukiyo en marcha."
         }
         failure { 
-            echo "❌ Error en el despliegue. Revisa los logs de construcción." 
+            echo "❌ CRÍTICO: Error detectado en el pipeline. Despliegue abortado de forma segura." 
         }
     }
 }

@@ -1,23 +1,40 @@
-# 1. Usamos una imagen oficial de Node.js (versión 20, ligera)
-FROM node:20-alpine
+# =========================================================
+# ETAPA 1: CONSTRUCCIÓN (BUILDER)
+# =========================================================
+FROM node:20-alpine AS builder
 
-# 2. Le decimos a Docker que trabaje dentro de la carpeta /app
 WORKDIR /app
 
-# 3. Copiamos solo los archivos de dependencias primero (para aprovechar la caché)
+# 1. Copiamos los descriptores de dependencias desde la raíz
 COPY package.json package-lock.json ./
 
-# 4. Instalamos las dependencias de Node
-RUN npm install
+# 2. Instalamos todas las dependencias (desarrollo y producción) de forma limpia
+RUN npm ci
 
-# 5. Copiamos el resto de tu código fuente (excepto lo que esté en .dockerignore)
+# 3. Copiamos el resto del código fuente del proyecto a la imagen
 COPY . .
 
-# 6. Compilamos el proyecto Nuxt para producción
+# 4. Compilamos Nuxt para producción (esto genera la carpeta optimizada .output)
 RUN npm run build
 
-# 7. Exponemos el puerto 3000 (el estándar de Nuxt)
+# =========================================================
+# ETAPA 2: PRODUCCIÓN (RUNNER)
+# =========================================================
+FROM node:20-alpine AS runner
+
+WORKDIR /app
+
+# 5. Forzamos variables de entorno seguras y óptimas para producción
+ENV NODE_ENV=production
+ENV HOST=0.0.0.0
+ENV PORT=3000
+
+# 6. CLEAN CODE: Copiamos ÚNICAMENTE la carpeta compilada (.output) de la etapa anterior.
+# Esto hace que la imagen final sea ligerísima y no contenga código fuente expuesto.
+COPY --from=builder /app/.output ./.output
+
+# 7. Exponemos el puerto por el que escucha Nuxt Nitro
 EXPOSE 3000
 
-# 8. Comando para encender el servidor de Nuxt en producción
+# 8. Arrancamos el servidor de producción optimizado
 CMD ["node", ".output/server/index.mjs"]
