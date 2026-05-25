@@ -27,6 +27,11 @@ pipeline {
         }
     }
 
+    // AUTOMATIZACIÓN: Escucha activa de los Webhooks de Git
+    triggers {
+        githubPush()
+    }
+
     environment {
         DOCKER_BASE_IMAGE = "bmleon/webcliente"
         DOCKER_TAG        = "${BUILD_NUMBER}"
@@ -51,8 +56,6 @@ pipeline {
                 container('docker-client') {
                     dir("${PROJECT_DIR}") {
                         echo "🏗️ Iniciando Multi-Stage Build desde la carpeta deploy..."
-                        
-                        // CORREGIDO: Le indicamos explícitamente que busque el Dockerfile dentro de deploy/
                         sh "docker build -t ${DOCKER_BASE_IMAGE}:${DOCKER_TAG} -t ${DOCKER_BASE_IMAGE}:latest -f deploy/Dockerfile ."
                     }
                 }
@@ -100,7 +103,7 @@ pipeline {
 
     post {
         success { 
-            echo "✅ ¡Despliegue Exitoso! Versión v${DOCKER_TAG} de Ukiyo en marcha."
+            echo "✅ ¡Despliegue Automático Exitoso! Versión v${DOCKER_TAG} de Ukiyo en marcha."
         }
         failure { 
             echo "❌ CRÍTICO: Error detectado en el pipeline. Despliegue abortado de forma segura." 
