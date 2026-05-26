@@ -9,24 +9,32 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: Docker/proyectos/web_ukiyo_nuxt
+
     steps:
       - name: Descargar código
         uses: actions/checkout@v4
-        
+
+      # LOGIN DOCKER HUB
       - name: Login Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
+      # BUILD
       - name: Construir imagen Docker
         run: |
           docker build -t bmleon/webcliente:latest -f deploy/Dockerfile .
 
+      # PUSH
       - name: Subir imagen Docker Hub
         run: |
           docker push bmleon/webcliente:latest
 
+      # SSH A TU VPS
       - name: Desplegar en VPS
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -34,4 +42,5 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           password: ${{ secrets.VPS_PASSWORD }}
           script: |
+            docker pull bmleon/webcliente:latest
             microk8s kubectl rollout restart deployment nuxt-web-cliente -n web-cliente
