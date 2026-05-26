@@ -59,6 +59,18 @@ const resolveRoute = (path: string) => {
   return resolved && !resolved.includes('undefined') ? resolved : path;
 };
 
+// Función para cerrar sesión de forma segura
+const handleLogout = async () => {
+  if (typeof authStore.logout === 'function') {
+    authStore.logout();
+  } else {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+  }
+  closeMenu();
+  await navigateTo('/login');
+};
+
 onMounted(() => {
   authStore.initAuth();
   const savedTheme = localStorage.getItem('theme');
@@ -134,8 +146,13 @@ onUnmounted(() => {
         </template>
         
         <template v-else>
-          <div class="hidden sm:flex items-center gap-2 ml-1 text-xs font-bold text-zinc-400 dark:text-zinc-600">
-            Mi Perfil (<span class="text-ukiyo-gold">{{ authStore.user?.profile?.username }}</span>)
+          <div class="hidden sm:flex items-center gap-3 ml-1 text-xs font-bold text-zinc-400 dark:text-zinc-600">
+            <div>
+              Mi Perfil (<span class="text-ukiyo-gold">{{ authStore.user?.profile?.username || 'belen' }}</span>)
+            </div>
+            <button @click="handleLogout" class="text-[10px] text-red-500 hover:text-red-400 dark:hover:text-red-700 uppercase tracking-widest font-black transition-colors cursor-pointer border border-red-500/30 px-2 py-0.5 rounded-md hover:bg-red-500/10">
+              Salir
+            </button>
           </div>
         </template>
 
@@ -157,6 +174,22 @@ onUnmounted(() => {
         >
           {{ link.name.startsWith('nav.') ? $t(link.name) : link.name }}
         </NuxtLink>
+
+        <div class="w-full h-[1px] bg-zinc-800 dark:bg-zinc-200 my-2"></div>
+        
+        <template v-if="!authStore.isAuthenticated">
+          <NuxtLink :to="resolveRoute('/login')" class="mobile-link-item text-ukiyo-gold font-black" @click="closeMenu">
+            Entrar
+          </NuxtLink>
+        </template>
+        <template v-else>
+          <span class="block px-3 py-1.5 text-xs font-bold text-zinc-500 uppercase tracking-widest">
+            Sesión: {{ authStore.user?.profile?.username || 'belen' }}
+          </span>
+          <button @click="handleLogout" class="mobile-link-item text-red-500 font-black">
+            Cerrar Sesión
+          </button>
+        </template>
       </div>
     </div>
     
@@ -175,7 +208,7 @@ onUnmounted(() => {
         class="fixed bottom-8 right-8 w-12 h-12 bg-ukiyo-gold text-black rounded-full shadow-2xl flex items-center justify-center z-[60] hover:bg-white hover:scale-110 transition-all active:scale-95" 
         aria-label="Volver arriba"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+        <svg xmlns="http://www.w3.org/2000/xl" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
           <path d="m5 12 7-7 7 7"/>
           <path d="M12 19V5"/>
         </svg>
@@ -183,8 +216,7 @@ onUnmounted(() => {
     </transition>
 </template>
 
-<style scoped>
-/* Clases de utilidad pesadas para blindar el cambio de color de las tipografías */
+<style scoped lang="postcss">
 .nav-link-item {
   @apply text-white dark:text-zinc-900 font-bold uppercase text-[10px] lg:text-xs tracking-widest hover:text-ukiyo-gold dark:hover:text-ukiyo-gold transition-colors py-2 border-b-2 border-transparent;
 }
