@@ -27,9 +27,9 @@ pipeline {
         }
     }
 
-    // AUTOMATIZACIÓN: Escucha activa de los Webhooks de Git
+    // AUTOMATIZACIÓN: Escucha de Webhooks nativa
     triggers {
-        githubPush()
+        pollSCM('') 
     }
 
     environment {
