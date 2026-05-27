@@ -1,13 +1,12 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: service-admin-ukiyo
-  namespace: admin-ukiyo
+  name: service-panel-admin
+  namespace: web-cliente
 spec:
-  selector:
-    app: admin-ukiyo
-  ports:
-  - protocol: TCP
-    port: 80
-    targetPort: 3000
   type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 3000
+  selector:
+    app: panel-admin

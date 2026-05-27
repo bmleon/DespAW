@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deployment-panel-admin
+  namespace: web-cliente # Lo dejamos en el mismo namespace para que compartan entorno
+  labels:
+    app: panel-admin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: panel-admin
+  template:
+    metadata:
+      labels:
+        app: panel-admin
+    spec:
+      containers:
+      - name: panel-admin
+        # Tu imagen de Docker Hub para el admin
+        image: bmleon/ukiyo-admin:latest 
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3000 # El puerto en el que corra tu Nuxt Admin
+        env:
+        # Variable para que el admin sepa dónde está el Backend
+        - name: NUXT_PUBLIC_API_BASE
+          value: "https://ukiyocazorla.es"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-panel-admin
+  namespace: web-cliente
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 3000
+  selector:
+    app: panel-admin

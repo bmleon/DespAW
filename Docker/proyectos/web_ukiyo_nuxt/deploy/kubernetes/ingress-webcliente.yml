@@ -4,20 +4,16 @@ metadata:
   name: ingress-web-cliente
   namespace: web-cliente
   annotations:
-    # 🌟 Vinculamos el Ingress con el notario de Let's Encrypt que creamos
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
-    # 🌟 Redirige automáticamente cualquier visita HTTP a HTTPS seguro
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
 spec:
   ingressClassName: public
-  # 🌟 BLOQUE TLS AÑADIDO: Configura el certificado para tu dominio
   tls:
   - hosts:
     - tienda.ukiyocazorla.es
-    # Aquí es donde cert-manager guardará de forma automática las claves del certificado SSL
+    - admin-ukiyo.ukiyocazorla.es
     secretName: ukiyo-tienda-tls
   rules:
-  # Tu dominio profesional y amigable para el SEO
   - host: tienda.ukiyocazorla.es
     http:
       paths:
@@ -26,5 +22,15 @@ spec:
         backend:
           service:
             name: service-web-cliente
+            port:
+              number: 80
+  - host: admin-ukiyo.ukiyocazorla.es
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: service-panel-admin
             port:
               number: 80

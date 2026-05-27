@@ -1,9 +1,17 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: ingress-admin-ukiyo
-  namespace: admin-ukiyo
+  name: ingress-panel-admin
+  namespace: web-cliente
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
 spec:
+  ingressClassName: public
+  tls:
+  - hosts:
+    - admin-ukiyo.ukiyocazorla.es
+    secretName: ukiyo-tienda-tls
   rules:
   - host: admin-ukiyo.ukiyocazorla.es
     http:
@@ -12,6 +20,6 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: service-admin-ukiyo
+            name: service-panel-admin
             port:
               number: 80
