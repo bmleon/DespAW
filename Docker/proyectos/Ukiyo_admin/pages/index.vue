@@ -1,6 +1,21 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 
+// Repositorios y Casos de Uso del módulo de Productos
+import { ApiProductRepository } from '../modules/products/infrastructure/api-product.repository'
+import { GetProductsUseCase } from '../modules/products/application/get-products.usecase'
+import type { Product } from '../modules/products/domain/product.model'
+
+// Repositorios y Casos de Uso del módulo de Pedidos
+import { ApiOrderRepository } from '../modules/orders/infrastructure/api-order.repository'
+import { GetOrdersUseCase } from '../modules/orders/application/get-orders.usecase'
+import type { Order } from '../modules/orders/domain/order.model'
+
+// Repositorios y Casos de Uso del módulo de Usuarios
+import { ApiUserRepository } from '../modules/users/infrastructure/api-user.repository'
+import { GetUsersUseCase } from '../modules/users/application/get-users.usecase'
+import type { User } from '../modules/users/domain/user.model'
+
 // --- LÓGICA DE SALUDO INTELIGENTE ---
 const userName = ref('Usuario') 
 
@@ -18,26 +33,49 @@ onMounted(() => {
   } else {
     userName.value = 'Admin' 
   }
+  // Carga inicial de datos limpia a través de la arquitectura
+  loadDashboardData()
 })
 
-// --- CARGA DE DATOS (Con Refresh) ---
-// Extraemos la función 'refresh' para poder recargar cada cosa individualmente
-const { data: products, refresh: refreshProducts } = await useFetch<any[]>('/api/products', { lazy: true, default: () => [] })
-const { data: users, refresh: refreshUsers } = await useFetch<any[]>('/api/users', { lazy: true, default: () => [] })
-const { data: orders, refresh: refreshOrders } = await useFetch<any[]>('/api/orders', { lazy: true, default: () => [] })
+// --- INSTANCIACIÓN DE ARQUITECTURA HEXAGONAL ---
+const productRepository = new ApiProductRepository()
+const getProductsUseCase = new GetProductsUseCase(productRepository)
 
-// Estado de carga para el botón manual
+const orderRepository = new ApiOrderRepository()
+const getOrdersUseCase = new GetOrdersUseCase(orderRepository)
+
+const userRepository = new ApiUserRepository()
+const getUsersUseCase = new GetUsersUseCase(userRepository)
+
+// --- ESTADOS REACTIVOS TOTALMENTE TIPADOS ---
+const products = ref<Product[]>([])
+const orders = ref<Order[]>([]) 
+const users = ref<User[]>([]) 
 const isRefreshing = ref(false)
+
+// --- RECOLECCIÓN DE DATOS POR CASOS DE USO ---
+const loadDashboardData = async () => {
+  try {
+    // Ejecutamos de forma paralela los tres casos de uso desacoplados de la infraestructura
+    const [productsData, ordersData, usersData] = await Promise.all([
+      getProductsUseCase.execute(),
+      getOrdersUseCase.execute(),
+      getUsersUseCase.execute()
+    ])
+    
+    products.value = productsData
+    orders.value = ordersData
+    users.value = usersData
+  } catch (error) {
+    console.error('Error cargando el dashboard a través de los casos de uso:', error)
+  }
+}
 
 // Función para recargar todo el dashboard a la vez
 const refreshDashboard = async () => {
   isRefreshing.value = true
   try {
-    await Promise.all([
-      refreshProducts(),
-      refreshUsers(),
-      refreshOrders()
-    ])
+    await loadDashboardData()
   } finally {
     isRefreshing.value = false
   }
@@ -45,7 +83,7 @@ const refreshDashboard = async () => {
 
 // --- ESTADÍSTICAS ---
 const stats = computed(() => {
-  const totalIncome = orders.value?.reduce((acc: number, order: any) => acc + Number(order.total || 0), 0) || 0
+  const totalIncome = orders.value?.reduce((acc: number, order: Order) => acc + Number(order.total || 0), 0) || 0
   const ordersToday = orders.value?.length || 0
 
   return [
@@ -58,12 +96,13 @@ const stats = computed(() => {
 
 const recentOrders = computed(() => {
   if (!orders.value || orders.value.length === 0) return []
+  // Al usar GetOrdersUseCase, ya vienen ordenados por fecha descendente, solo cortamos los 5 primeros
   return orders.value.slice(0, 5)
 })
 
 // --- ACCIONES RÁPIDAS ---
 const toggleKitchen = ref(true) 
-const showReportModal = ref(false) // Control del modal de reporte
+const showReportModal = ref(false)
 
 const closeKitchen = () => {
   toggleKitchen.value = !toggleKitchen.value
@@ -74,21 +113,17 @@ const closeKitchen = () => {
   }
 }
 
-// 1. IMPRIMIR (Abre diálogo de impresora)
 const printReport = () => {
   window.print()
 }
 
-// 2. DESCARGAR PDF (Usa la función de impresión nativa para "Guardar como PDF")
 const downloadReport = () => {
-  // Al abrir el diálogo de impresión, el usuario puede seleccionar "Guardar como PDF"
   window.print()
 }
 </script>
 
 <template>
   <div>
-    <!-- CABECERA -->
     <div class="mb-8 print:hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
       <div>
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
@@ -97,7 +132,6 @@ const downloadReport = () => {
         <p class="text-gray-500 mt-1">Aquí tienes el resumen de Ukiyo en tiempo real.</p>
       </div>
 
-      <!-- BOTÓN DE RECARGA (NUEVO) -->
       <UButton 
         icon="i-heroicons-arrow-path" 
         color="white" 
@@ -109,7 +143,6 @@ const downloadReport = () => {
       </UButton>
     </div>
 
-    <!-- TARJETAS (Ocultas al imprimir) -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 print:hidden">
       <UCard v-for="stat in stats" :key="stat.label">
         <div class="flex items-center justify-between">
@@ -126,7 +159,6 @@ const downloadReport = () => {
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 print:hidden">
       
-      <!-- TABLA PEDIDOS -->
       <UCard class="lg:col-span-2">
         <template #header>
           <div class="flex justify-between items-center">
@@ -155,7 +187,11 @@ const downloadReport = () => {
               <td class="py-3 font-medium">{{ order.customer || 'Cliente Web' }}</td>
               <td class="py-3">{{ Number(order.total).toFixed(2) }}€</td>
               <td class="py-3">
-                <UBadge :color="order.status === 'completed' ? 'green' : 'orange'" variant="subtle" size="xs">
+                <UBadge 
+                  :color="order.status === 'completed' ? 'green' : order.status === 'pending' ? 'orange' : 'red'" 
+                  variant="subtle" 
+                  size="xs"
+                >
                   {{ order.status || 'Pendiente' }}
                 </UBadge>
               </td>
@@ -164,7 +200,6 @@ const downloadReport = () => {
         </table>
       </UCard>
 
-      <!-- ACCIONES RÁPIDAS -->
       <UCard>
         <template #header>
           <h3 class="font-bold text-gray-900 dark:text-white">Acciones Rápidas</h3>
@@ -179,7 +214,6 @@ const downloadReport = () => {
             {{ toggleKitchen ? 'Cerrar Cocina Temporalmente' : 'Abrir Cocina' }}
           </UButton>
           
-          <!-- BOTÓN REPORTE (Abre Modal) -->
           <UButton block color="gray" icon="i-heroicons-document-text" @click="showReportModal = true">
             Ver Reporte del Día
           </UButton>
@@ -188,7 +222,6 @@ const downloadReport = () => {
       </UCard>
     </div>
 
-    <!-- MODAL DE PREVISUALIZACIÓN DEL REPORTE -->
     <UModal v-model="showReportModal" :ui="{ width: 'w-full sm:max-w-3xl' }">
       <UCard :ui="{ body: { padding: 'p-0' } }">
         <template #header>
@@ -201,9 +234,7 @@ const downloadReport = () => {
           </div>
         </template>
 
-        <!-- Contenido Visual del Reporte -->
         <div class="p-6 space-y-6">
-          <!-- Resumen -->
           <div class="grid grid-cols-2 gap-4">
             <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg text-center border border-gray-100 dark:border-gray-700">
               <p class="text-sm text-gray-500 uppercase tracking-wide">Total Ventas</p>
@@ -215,7 +246,6 @@ const downloadReport = () => {
             </div>
           </div>
 
-          <!-- Lista Detallada -->
           <div>
             <h4 class="font-bold mb-3 border-b border-gray-200 dark:border-gray-700 pb-2">Detalle de Operaciones</h4>
             <div class="overflow-x-auto">
@@ -246,25 +276,20 @@ const downloadReport = () => {
 
         <template #footer>
           <div class="flex justify-end gap-3 p-4 pt-0">
-            <!-- BOTÓN DESCARGAR PDF (Abre diálogo de impresión) -->
             <UButton color="white" icon="i-heroicons-document-arrow-down" @click="downloadReport">Descargar PDF</UButton>
-            <!-- BOTÓN IMPRIMIR (Mismo comportamiento, por claridad) -->
             <UButton color="black" icon="i-heroicons-printer" @click="printReport">Imprimir</UButton>
           </div>
         </template>
       </UCard>
     </UModal>
 
-    <!-- DISEÑO DE IMPRESIÓN (SOLO VISIBLE AL IMPRIMIR) -->
     <div class="hidden print:block fixed inset-0 bg-white z-[9999] p-10 text-black">
-      <!-- Cabecera Factura -->
       <div class="text-center mb-10 border-b-2 border-black pb-6">
         <h1 class="text-4xl font-bold tracking-[0.2em] mb-2">UKIYO</h1>
         <p class="text-sm text-gray-600 uppercase">Reporte Diario de Operaciones</p>
         <p class="text-lg font-bold mt-4">{{ new Date().toLocaleDateString() }} - {{ new Date().toLocaleTimeString() }}</p>
       </div>
 
-      <!-- Resumen Grande -->
       <div class="flex justify-between mb-10 px-8">
         <div>
            <p class="text-xs uppercase text-gray-500 mb-1">Total Facturado</p>
@@ -276,13 +301,11 @@ const downloadReport = () => {
         </div>
       </div>
 
-      <!-- Tabla Limpia -->
       <table class="w-full text-sm">
         <thead>
           <tr class="border-b-2 border-black">
             <th class="py-2 text-left">ID PEDIDO</th>
             <th class="py-2 text-left">CLIENTE</th>
-            <th class="py-2 text-center">HORA</th>
             <th class="py-2 text-right">IMPORTE</th>
           </tr>
         </thead>
@@ -290,13 +313,11 @@ const downloadReport = () => {
           <tr v-for="order in (orders || [])" :key="order.id" class="border-b border-gray-200">
             <td class="py-3 font-mono">#{{ order.id }}</td>
             <td class="py-3">{{ order.customer || 'Cliente Web' }}</td>
-            <td class="py-3 text-center text-gray-500">{{ order.created_at ? new Date(order.created_at).toLocaleTimeString().slice(0,5) : '--:--' }}</td>
             <td class="py-3 text-right font-bold">{{ Number(order.total).toFixed(2) }}€</td>
           </tr>
         </tbody>
       </table>
 
-      <!-- Pie de página -->
       <div class="mt-12 text-center text-xs text-gray-400 border-t border-gray-200 pt-4">
         Generado automáticamente por Ukiyo Admin Panel. Documento interno.
       </div>
