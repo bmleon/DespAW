@@ -34,4 +34,3 @@ spec:
             name: service-panel-admin
             port:
               number: 80
-
