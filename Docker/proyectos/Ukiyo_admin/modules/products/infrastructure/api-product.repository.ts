@@ -6,7 +6,7 @@ export class ApiProductRepository implements ProductRepository {
   private baseUrl: string;
 
   constructor() {
-    this.baseUrl = 'http://ukiyocazorla.es'; 
+    this.baseUrl = 'https://ukiyocazorla.es'; 
   }
 
   // 1. Obtener todos los platos de la BD
