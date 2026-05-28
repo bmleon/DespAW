@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - main
-    paths:
-      # Se activa si cambias el código o los manifiestos del panel admin
-      - 'Docker/proyectos/Ukiyo_admin/**'
 
 jobs:
   build-and-push:
