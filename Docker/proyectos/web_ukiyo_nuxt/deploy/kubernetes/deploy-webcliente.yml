@@ -22,4 +22,4 @@ spec:
         env:
         # Aquí inyectamos el dominio de producción para tu admin
         - name: NUXT_PUBLIC_API_BASE
-          value: "http://ukiyocazorla.es"
+          value: "https://ukiyocazorla.es"

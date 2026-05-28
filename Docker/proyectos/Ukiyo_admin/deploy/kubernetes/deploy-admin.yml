@@ -23,7 +23,7 @@ spec:
         - containerPort: 3000
         env:
         - name: NUXT_PUBLIC_API_BASE
-          value: "http://ukiyocazorla.es"
+          value: "https://ukiyocazorla.es"
         # 🌟 ESTO ES LO QUE DESPIERTA A ARGOCD Y FUERZA LA DESCARGA DE LA IMAGEN NUEVA
         - name: FORCE_RESTART_FECHA
           value: "28-mayo-2026-v1"
