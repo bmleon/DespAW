@@ -27,7 +27,7 @@ const isLoading = ref(false);
 const errorMessage = ref('');
 const successMessage = ref('');
 
-const API_URL = 'http://ukiyocazorla.es/api';
+const API_URL = 'https://ukiyocazorla.es/api';
 
 const toggleAuth = () => {
   isLogin.value = !isLogin.value;
