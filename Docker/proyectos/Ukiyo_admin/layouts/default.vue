@@ -29,17 +29,29 @@ const isOpen = ref(false)
       </div>
 
       <div class="flex-1 overflow-y-auto py-4 px-3">
-        <UVerticalNavigation :links="links" :ui="{
-          padding: 'py-2.5',
-          font: 'font-medium',
-          active: 'text-gray-950 dark:text-ukiyo-gold bg-gray-100 dark:bg-gray-800 before:bg-ukiyo-gold',
-          inactive: 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800/50'
-        }" />
+        <ClientOnly>
+          <UVerticalNavigation :links="links" :ui="{
+            padding: 'py-2.5',
+            font: 'font-medium',
+            active: 'text-gray-950 dark:text-ukiyo-gold bg-gray-100 dark:bg-gray-800 before:bg-ukiyo-gold',
+            inactive: 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800/50'
+          }" />
+          <template #fallback>
+            <div class="space-y-2">
+              <div v-for="i in 5" :key="i" class="h-9 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
+            </div>
+          </template>
+        </ClientOnly>
       </div>
 
       <div class="p-4 border-t border-gray-200 dark:border-gray-800">
         <div class="flex items-center gap-3">
-          <UAvatar src="https://ui-avatars.com/api/?name=Yamila+G&background=C5A059&color=fff" alt="Admin" size="sm" />
+          <ClientOnly>
+            <UAvatar src="https://ui-avatars.com/api/?name=Yamila+G&background=C5A059&color=fff" alt="Admin" size="sm" />
+            <template #fallback>
+              <div class="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-800 animate-pulse" />
+            </template>
+          </ClientOnly>
           <div class="text-sm">
             <p class="font-medium text-gray-900 dark:text-white">Yamila G.</p>
             <p class="text-xs text-gray-500 dark:text-gray-400">Propietaria</p>
@@ -66,16 +78,18 @@ const isOpen = ref(false)
       </main>
     </div>
 
-    <USlideover v-model="isOpen" side="left">
-      <div class="p-4 flex-1 flex flex-col bg-white dark:bg-gray-900 h-full">
-        <div class="h-16 flex items-center mb-4 border-b border-gray-100 dark:border-gray-800">
-          <span class="font-black text-xl tracking-widest text-gray-900 dark:text-white">UKIYO ADMIN</span>
+    <ClientOnly>
+      <USlideover v-model="isOpen" side="left">
+        <div class="p-4 flex-1 flex flex-col bg-white dark:bg-gray-900 h-full">
+          <div class="h-16 flex items-center mb-4 border-b border-gray-100 dark:border-gray-800">
+            <span class="font-black text-xl tracking-widest text-gray-900 dark:text-white">UKIYO ADMIN</span>
+          </div>
+          <UVerticalNavigation :links="links" @click="isOpen = false" :ui="{
+            active: 'text-gray-950 dark:text-ukiyo-gold bg-gray-100 dark:bg-gray-800'
+          }" />
         </div>
-        <UVerticalNavigation :links="links" @click="isOpen = false" :ui="{
-          active: 'text-gray-950 dark:text-ukiyo-gold bg-gray-100 dark:bg-gray-800'
-        }" />
-      </div>
-    </USlideover>
+      </USlideover>
+    </ClientOnly>
 
   </div>
 </template>
