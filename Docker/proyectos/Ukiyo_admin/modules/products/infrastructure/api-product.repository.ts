@@ -1,18 +1,19 @@
 import { ofetch } from 'ofetch';
 import type { ProductRepository } from '../domain/product.repository';
 import type { Product } from '../domain/product.model';
+
 export class ApiProductRepository implements ProductRepository {
   private baseUrl: string;
 
   constructor() {
-    // Si da error useRuntimeConfig, usamos process.env o la URL directa de producción por defecto
     this.baseUrl = 'https://ukiyocazorla.es'; 
   }
 
   // 1. Obtener todos los platos de la BD
   async findAll(): Promise<Product[]> {
     try {
-      const data = await ofetch<Product[]>(`${this.baseUrl}/api/products`);
+      // Corregido: de 'products' a 'productos'
+      const data = await ofetch<Product[]>(`${this.baseUrl}/api/productos`);
       return data;
     } catch (error) {
       console.error('Error al obtener productos desde la API:', error);
@@ -23,7 +24,8 @@ export class ApiProductRepository implements ProductRepository {
   // 2. Guardar un plato nuevo
   async create(product: Product): Promise<Product> {
     try {
-      const newProduct = await ofetch<Product>(`${this.baseUrl}/api/products`, {
+      // Corregido: de 'products' a 'productos'
+      const newProduct = await ofetch<Product>(`${this.baseUrl}/api/productos`, {
         method: 'POST',
         body: product
       });
@@ -37,7 +39,8 @@ export class ApiProductRepository implements ProductRepository {
   // 3. Borrar un plato
   async delete(id: string): Promise<void> {
     try {
-      await ofetch(`${this.baseUrl}/api/products/${id}`, {
+      // Corregido: de 'products' a 'productos'
+      await ofetch(`${this.baseUrl}/api/productos/${id}`, {
         method: 'DELETE'
       });
     } catch (error) {
