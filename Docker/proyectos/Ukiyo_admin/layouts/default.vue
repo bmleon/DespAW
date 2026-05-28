@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import ColorModeButton from '~/components/ColorModeButton.vue'
 
 const links = [
   { label: 'Dashboard', icon: 'i-heroicons-home', to: '/' },
-  { label: 'Usuarios', icon: 'i-heroicons-users', to: '/users' },
+  { label: 'Usuarios', icon: 'i-heroicons-users', to: '/users' }, // 💡 Corregido a /users para que coincida con tu archivo
   { label: 'Carta / Menú', icon: 'i-heroicons-cake', to: '/menu' },
   { label: 'Pedidos Delivery', icon: 'i-heroicons-shopping-bag', to: '/orders' },
   // NUEVOS ENLACES
@@ -31,7 +32,6 @@ const isOpen = ref(false)
         <UVerticalNavigation :links="links" :ui="{
           padding: 'py-2.5',
           font: 'font-medium',
-          // 🌟 Ajustado texto activo en claro a gris oscuro/negro para garantizar el contraste
           active: 'text-gray-950 dark:text-ukiyo-gold bg-gray-100 dark:bg-gray-800 before:bg-ukiyo-gold',
           inactive: 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800/50'
         }" />

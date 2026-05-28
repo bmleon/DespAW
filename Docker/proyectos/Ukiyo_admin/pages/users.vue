@@ -24,6 +24,11 @@ const pending = ref(false)
 const errorMsg = ref('')
 const search = ref('')
 
+// Función auxiliar segura para extraer y recortar el ID sin importar si viene como id o _id
+const getUserId = (user: any): string => {
+  return user.id || user._id || ''
+}
+
 const loadUsers = async () => {
   pending.value = true
   errorMsg.value = ''
@@ -45,25 +50,27 @@ const filteredUsers = computed(() => {
   return rawUsers.value.filter((user) => {
     const query = search.value.toLowerCase()
     return (
-      user.name.toLowerCase().includes(query) || 
-      user.email.toLowerCase().includes(query)
+      (user.name && user.name.toLowerCase().includes(query)) || 
+      (user.email && user.email.toLowerCase().includes(query))
     )
   })
 })
 
 const handleToggleRole = async (user: User) => {
+  const userId = getUserId(user)
   try {
-    await updateUserRoleUseCase.execute(user.id, user.role)
+    await updateUserRoleUseCase.execute(userId, user.role)
     await loadUsers() 
   } catch (err: any) {
     alert(err.message || 'Error al cambiar el rol.')
   }
 }
 
-const handleDeleteUser = async (id: string) => {
+const handleDeleteUser = async (user: User) => {
+  const userId = getUserId(user)
   if (confirm('⚠️ ¿Seguro que deseas eliminar a este usuario? Perderá el acceso a su cuenta y este cambio es irreversible.')) {
     try {
-      await deleteUserUseCase.execute(id)
+      await deleteUserUseCase.execute(userId)
       await loadUsers()
     } catch (err: any) {
       alert(err.message || 'Error al dar de baja al usuario.')
@@ -81,7 +88,7 @@ const items = (row: User) => [
     label: 'Eliminar Usuario',
     icon: 'i-heroicons-user-minus',
     class: 'text-red-500 dark:text-red-400',
-    click: () => handleDeleteUser(row.id)
+    click: () => handleDeleteUser(row)
   }]
 ]
 </script>
@@ -137,17 +144,19 @@ const items = (row: User) => [
         <template #avatar-data="{ row }">
           <div class="flex items-center gap-3 py-1">
             <UAvatar 
-              :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(row.name)}&background=random&color=fff`" 
+              :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(row.name || 'U')}&background=random&color=fff`" 
               size="sm" 
             />
             <div class="flex flex-col">
-              <span class="text-xs font-mono text-gray-400 dark:text-gray-500">#{{ row.id.slice(0, 8) }}...</span>
+              <span class="text-xs font-mono text-gray-400 dark:text-gray-500">
+                #{{ getUserId(row).slice(0, 8) }}...
+              </span>
             </div>
           </div>
         </template>
 
         <template #name-data="{ row }">
-          <span class="font-semibold text-gray-900 dark:text-white">{{ row.name }}</span>
+          <span class="font-semibold text-gray-900 dark:text-white">{{ row.name || 'Sin nombre' }}</span>
         </template>
 
         <template #email-data="{ row }">
