@@ -1,5 +1,8 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
+  // 🌟 APAGAMOS EL RENDERIZADO EN EL SERVIDOR (Adiós errores de hidratación)
+  ssr: false,
+
   // Volvemos a una fecha estable
   compatibilityDate: '2024-04-03',
   devtools: { enabled: true },
@@ -21,7 +24,7 @@ export default defineNuxtConfig({
   },
 
   colorMode: {
-    preference: 'dark'
+    preference: 'dark' // Nota: Esto define el tema por defecto si el usuario no ha elegido uno
   },
 
   runtimeConfig: {
@@ -29,7 +32,6 @@ export default defineNuxtConfig({
       // SOLUCIÓN: Ponemos la URL "a fuego" aquí. 
       // Así nos aseguramos de que siempre apunte al Gateway de Kubernetes (30090).
       apiBase: 'http://ukiyocazorla.es'
-
     }
   }
 })
