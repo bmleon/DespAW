@@ -6,7 +6,7 @@ export class ApiProductRepository implements ProductRepository {
 
   constructor() {
     // Si da error useRuntimeConfig, usamos process.env o la URL directa de producción por defecto
-    this.baseUrl = 'https://tienda.ukiyocazorla.es'; 
+    this.baseUrl = 'https://ukiyocazorla.es'; 
   }
 
   // 1. Obtener todos los platos de la BD

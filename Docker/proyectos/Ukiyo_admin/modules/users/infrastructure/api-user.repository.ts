@@ -3,7 +3,7 @@ import type { UserRepository } from '../domain/user.repository';
 import type { User } from '../domain/user.model';
 
 export class ApiUserRepository implements UserRepository {
-  private baseUrl = '/api-backend/users';
+  private baseUrl = 'https://ukiyocazorla.es/api/usuarios';
 
   async findAll(): Promise<User[]> {
     try {

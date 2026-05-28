@@ -6,7 +6,7 @@ export class ApiOrderRepository implements OrderRepository {
   private baseUrl: string;
 
   constructor() {
-    this.baseUrl = 'https://tienda.ukiyocazorla.es';
+    this.baseUrl = 'https://ukiyocazorla.es';
   }
 
   async findAll(): Promise<Order[]> {
