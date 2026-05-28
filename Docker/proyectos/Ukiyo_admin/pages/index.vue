@@ -16,24 +16,30 @@ import { ApiUserRepository } from '../modules/users/infrastructure/api-user.repo
 import { GetUsersUseCase } from '../modules/users/application/get-users.usecase'
 import type { User } from '../modules/users/domain/user.model'
 
-// --- LÓGICA DE SALUDO INTELIGENTE ---
+// --- LÓGICA DE SALUDO INTELIGENTE (SOLUCIÓN AL HYDRATION MISMATCH) ---
 const userName = ref('Usuario') 
-
-const timeGreeting = computed(() => {
-  const hour = new Date().getHours()
-  if (hour >= 6 && hour < 12) return 'Buenos días'
-  if (hour >= 12 && hour < 20) return 'Buenas tardes'
-  return 'Buenas noches'
-})
+const timeGreeting = ref('Hola') // Saludo neutro inicial para el servidor web
 
 onMounted(() => {
+  // 1. Recuperar el nombre del administrador de forma segura en local
   const savedName = localStorage.getItem('userName')
   if (savedName) {
     userName.value = savedName
   } else {
     userName.value = 'Admin' 
   }
-  // Carga inicial de datos limpia a través de la arquitectura
+
+  // 2. Calcular la hora local del cliente para evitar diferencias con la hora del servidor en la nube
+  const hour = new Date().getHours()
+  if (hour >= 6 && hour < 12) {
+    timeGreeting.value = 'Buenos días'
+  } else if (hour >= 12 && hour < 20) {
+    timeGreeting.value = 'Buenas tardes'
+  } else {
+    timeGreeting.value = 'Buenas noches'
+  }
+
+  // 3. Carga inicial de datos de los tres hexágonos independientes
   loadDashboardData()
 })
 
@@ -56,7 +62,6 @@ const isRefreshing = ref(false)
 // --- RECOLECCIÓN DE DATOS POR CASOS DE USO ---
 const loadDashboardData = async () => {
   try {
-    // Ejecutamos de forma paralela los tres casos de uso desacoplados de la infraestructura
     const [productsData, ordersData, usersData] = await Promise.all([
       getProductsUseCase.execute(),
       getOrdersUseCase.execute(),
