@@ -96,7 +96,6 @@ const stats = computed(() => {
 
 const recentOrders = computed(() => {
   if (!orders.value || orders.value.length === 0) return []
-  // Al usar GetOrdersUseCase, ya vienen ordenados por fecha descendente, solo cortamos los 5 primeros
   return orders.value.slice(0, 5)
 })
 
@@ -172,32 +171,34 @@ const downloadReport = () => {
           <p>No hay pedidos registrados en el sistema.</p>
         </div>
 
-        <table v-else class="w-full text-sm text-left">
-          <thead>
-            <tr class="text-gray-500 border-b border-gray-100 dark:border-gray-800">
-              <th class="pb-3 font-medium">ID</th>
-              <th class="pb-3 font-medium">Cliente</th>
-              <th class="pb-3 font-medium">Total</th>
-              <th class="pb-3 font-medium">Estado</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
-            <tr v-for="order in recentOrders" :key="order.id">
-              <td class="py-3 font-mono text-gray-500">#{{ order.id }}</td>
-              <td class="py-3 font-medium">{{ order.customer || 'Cliente Web' }}</td>
-              <td class="py-3">{{ Number(order.total).toFixed(2) }}€</td>
-              <td class="py-3">
-                <UBadge 
-                  :color="order.status === 'completed' ? 'green' : order.status === 'pending' ? 'orange' : 'red'" 
-                  variant="subtle" 
-                  size="xs"
-                >
-                  {{ order.status || 'Pendiente' }}
-                </UBadge>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <div v-else class="overflow-x-auto">
+          <table class="w-full text-sm text-left">
+            <thead>
+              <tr class="text-gray-500 border-b border-gray-100 dark:border-gray-800">
+                <th class="pb-3 font-medium">ID</th>
+                <th class="pb-3 font-medium">Cliente</th>
+                <th class="pb-3 font-medium">Total</th>
+                <th class="pb-3 font-medium">Estado</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+              <tr v-for="order in recentOrders" :key="order.id">
+                <td class="py-3 font-mono text-gray-500">#{{ order.id }}</td>
+                <td class="py-3 font-medium">{{ order.customer || 'Cliente Web' }}</td>
+                <td class="py-3">{{ Number(order.total).toFixed(2) }}€</td>
+                <td class="py-3">
+                  <UBadge 
+                    :color="order.status === 'completed' ? 'green' : order.status === 'pending' ? 'orange' : 'red'" 
+                    variant="subtle" 
+                    size="xs"
+                  >
+                    {{ order.status || 'Pendiente' }}
+                  </UBadge>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </UCard>
 
       <UCard>
@@ -222,66 +223,68 @@ const downloadReport = () => {
       </UCard>
     </div>
 
-    <UModal v-model="showReportModal" :ui="{ width: 'w-full sm:max-w-3xl' }">
-      <UCard :ui="{ body: { padding: 'p-0' } }">
-        <template #header>
-          <div class="flex justify-between items-center p-4 pb-0">
-            <h3 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <UIcon name="i-heroicons-clipboard-document-list" />
-              Reporte de Cierre - {{ new Date().toLocaleDateString() }}
-            </h3>
-            <UButton color="gray" variant="ghost" icon="i-heroicons-x-mark" @click="showReportModal = false" />
-          </div>
-        </template>
-
-        <div class="p-6 space-y-6">
-          <div class="grid grid-cols-2 gap-4">
-            <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg text-center border border-gray-100 dark:border-gray-700">
-              <p class="text-sm text-gray-500 uppercase tracking-wide">Total Ventas</p>
-              <p class="text-3xl font-black text-green-500 mt-1">{{ stats[0].value }}</p>
+    <ClientOnly>
+      <UModal v-model="showReportModal" :ui="{ width: 'w-full sm:max-w-3xl' }">
+        <UCard :ui="{ body: { padding: 'p-0' } }">
+          <template #header>
+            <div class="flex justify-between items-center p-4 pb-0">
+              <h3 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <UIcon name="i-heroicons-clipboard-document-list" />
+                Reporte de Cierre - {{ new Date().toLocaleDateString() }}
+              </h3>
+              <UButton color="gray" variant="ghost" icon="i-heroicons-x-mark" @click="showReportModal = false" />
             </div>
-            <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg text-center border border-gray-100 dark:border-gray-700">
-              <p class="text-sm text-gray-500 uppercase tracking-wide">Pedidos</p>
-              <p class="text-3xl font-black text-blue-500 mt-1">{{ stats[1].value }}</p>
+          </template>
+
+          <div class="p-6 space-y-6">
+            <div class="grid grid-cols-2 gap-4">
+              <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg text-center border border-gray-100 dark:border-gray-700">
+                <p class="text-sm text-gray-500 uppercase tracking-wide">Total Ventas</p>
+                <p class="text-3xl font-black text-green-500 mt-1">{{ stats[0].value }}</p>
+              </div>
+              <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg text-center border border-gray-100 dark:border-gray-700">
+                <p class="text-sm text-gray-500 uppercase tracking-wide">Pedidos</p>
+                <p class="text-3xl font-black text-blue-500 mt-1">{{ stats[1].value }}</p>
+              </div>
+            </div>
+
+            <div>
+              <h4 class="font-bold mb-3 border-b border-gray-200 dark:border-gray-700 pb-2">Detalle de Operaciones</h4>
+              <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                  <thead class="text-gray-500 bg-gray-50 dark:bg-gray-800/50">
+                    <tr>
+                      <th class="p-2 rounded-l-lg">ID</th>
+                      <th class="p-2">Cliente</th>
+                      <th class="p-2 text-right">Total</th>
+                      <th class="p-2 rounded-r-lg text-center">Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                    <tr v-for="order in (orders || [])" :key="order.id">
+                      <td class="p-2 font-mono text-xs">#{{ order.id }}</td>
+                      <td class="p-2">{{ order.customer || 'Cliente Web' }}</td>
+                      <td class="p-2 text-right font-medium">{{ Number(order.total).toFixed(2) }}€</td>
+                      <td class="p-2 text-center">{{ order.status || 'Pendiente' }}</td>
+                    </tr>
+                    <tr v-if="!orders || orders.length === 0">
+                      <td colspan="4" class="p-4 text-center text-gray-400 italic">No hay movimientos registrados hoy.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 
-          <div>
-            <h4 class="font-bold mb-3 border-b border-gray-200 dark:border-gray-700 pb-2">Detalle de Operaciones</h4>
-            <div class="overflow-x-auto">
-              <table class="w-full text-sm text-left">
-                <thead class="text-gray-500 bg-gray-50 dark:bg-gray-800/50">
-                  <tr>
-                    <th class="p-2 rounded-l-lg">ID</th>
-                    <th class="p-2">Cliente</th>
-                    <th class="p-2 text-right">Total</th>
-                    <th class="p-2 rounded-r-lg text-center">Estado</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
-                  <tr v-for="order in (orders || [])" :key="order.id">
-                    <td class="p-2 font-mono text-xs">#{{ order.id }}</td>
-                    <td class="p-2">{{ order.customer || 'Cliente Web' }}</td>
-                    <td class="p-2 text-right font-medium">{{ Number(order.total).toFixed(2) }}€</td>
-                    <td class="p-2 text-center">{{ order.status || 'Pendiente' }}</td>
-                  </tr>
-                  <tr v-if="!orders || orders.length === 0">
-                    <td colspan="4" class="p-4 text-center text-gray-400 italic">No hay movimientos registrados hoy.</td>
-                  </tr>
-                </tbody>
-              </table>
+          <template #footer>
+            <div class="flex justify-end gap-3 p-4 pt-0">
+              <UButton color="white" icon="i-heroicons-document-arrow-down" @click="downloadReport">Descargar PDF</UButton>
+              <UButton color="black" icon="i-heroicons-printer" @click="printReport">Imprimir</UButton>
             </div>
-          </div>
-        </div>
-
-        <template #footer>
-          <div class="flex justify-end gap-3 p-4 pt-0">
-            <UButton color="white" icon="i-heroicons-document-arrow-down" @click="downloadReport">Descargar PDF</UButton>
-            <UButton color="black" icon="i-heroicons-printer" @click="printReport">Imprimir</UButton>
-          </div>
-        </template>
-      </UCard>
-    </UModal>
+          </template>
+        </UCard>
+      </UModal>
+    </ClientOnly>
 
     <div class="hidden print:block fixed inset-0 bg-white z-[9999] p-10 text-black">
       <div class="text-center mb-10 border-b-2 border-black pb-6">

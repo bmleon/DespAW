@@ -154,9 +154,14 @@ const items = (row: Product) => [
         </template>
 
         <template #actions-data="{ row }">
-          <UDropdown :items="items(row)">
-            <UButton color="gray" variant="ghost" icon="i-heroicons-ellipsis-horizontal-20-solid" />
-          </UDropdown>
+          <ClientOnly>
+            <UDropdown :items="items(row)">
+              <UButton color="gray" variant="ghost" icon="i-heroicons-ellipsis-horizontal-20-solid" />
+            </UDropdown>
+            <template #fallback>
+              <UButton color="gray" variant="ghost" icon="i-heroicons-ellipsis-horizontal-20-solid" disabled class="opacity-50" />
+            </template>
+          </ClientOnly>
         </template>
       </UTable>
     </UCard>

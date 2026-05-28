@@ -24,7 +24,6 @@ const pending = ref(false)
 const errorMsg = ref('')
 const search = ref('')
 
-// Función auxiliar segura para extraer y recortar el ID sin importar si viene como id o _id
 const getUserId = (user: any): string => {
   return user.id || user._id || ''
 }
@@ -175,9 +174,14 @@ const items = (row: User) => [
         </template>
 
         <template #actions-data="{ row }">
-          <UDropdown :items="items(row)">
-            <UButton color="gray" variant="ghost" icon="i-heroicons-ellipsis-horizontal-20-solid" />
-          </UDropdown>
+          <ClientOnly>
+            <UDropdown :items="items(row)">
+              <UButton color="gray" variant="ghost" icon="i-heroicons-ellipsis-horizontal-20-solid" />
+            </UDropdown>
+            <template #fallback>
+              <UButton color="gray" variant="ghost" icon="i-heroicons-ellipsis-horizontal-20-solid" disabled class="opacity-50" />
+            </template>
+          </ClientOnly>
         </template>
       </UTable>
     </UCard>

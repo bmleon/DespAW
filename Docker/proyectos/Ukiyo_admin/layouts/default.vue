@@ -4,7 +4,7 @@ import ColorModeButton from '~/components/ColorModeButton.vue'
 
 const links = [
   { label: 'Dashboard', icon: 'i-heroicons-home', to: '/' },
-  { label: 'Usuarios', icon: 'i-heroicons-users', to: '/users' }, // 💡 Corregido a /users para que coincida con tu archivo
+  { label: 'Usuarios', icon: 'i-heroicons-users', to: '/users' },
   { label: 'Carta / Menú', icon: 'i-heroicons-cake', to: '/menu' },
   { label: 'Pedidos Delivery', icon: 'i-heroicons-shopping-bag', to: '/orders' },
   // NUEVOS ENLACES

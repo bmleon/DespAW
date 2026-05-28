@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+
 const colorMode = useColorMode()
 
 const isDark = computed({
@@ -22,7 +24,9 @@ const isDark = computed({
       class="text-xl hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
     />
     <template #fallback>
-      <div class="w-8 h-8" />
+      <div class="w-8 h-8 flex items-center justify-center">
+        <div class="w-5 h-5 bg-gray-200 dark:bg-gray-800 rounded-full animate-pulse" />
+      </div>
     </template>
   </ClientOnly>
 </template>
