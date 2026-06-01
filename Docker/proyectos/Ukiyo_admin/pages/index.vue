@@ -49,18 +49,20 @@ const isRefreshing = ref(false)
 // --- RECOLECCIÓN DE DATOS POR CASOS DE USO ---
 const loadDashboardData = async () => {
   try {
-    const [productsData, ordersData, usersData] = await Promise.all([
+    // Comentamos ordersData para que el error 400 no arrastre el resto de peticiones
+    const [productsData, usersData] = await Promise.all([
       getProductsUseCase.execute(),
-      getOrdersUseCase.execute(),
+      // getOrdersUseCase.execute(), // <-- COMENTADO TEMPORALMENTE (Evita error 400)
       getUsersUseCase.execute()
     ])
     
     products.value = Array.isArray(productsData) ? productsData : []
-    orders.value = Array.isArray(ordersData) ? ordersData : []
     users.value = Array.isArray(usersData) ? usersData : []
     
-    // Test rápido por consola del servidor para verificar qué llega al index
-    console.log(`📊 Dashboard sincronizado: ${users.value.length} usuarios cargados.`)
+    // Mantenemos el estado de pedidos a cero de forma controlada para evitar fallos de renderizado
+    orders.value = []
+    
+    console.log(`📊 Dashboard sincronizado con bypass de pedidos: ${users.value.length} usuarios cargados.`)
   } catch (error) {
     console.error('Error cargando el dashboard a través de los casos de uso:', error)
   }
