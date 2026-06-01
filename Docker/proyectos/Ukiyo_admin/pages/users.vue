@@ -6,7 +6,6 @@ import { UpdateUserRoleUseCase } from '~/modules/users/application/update-user-r
 import { DeleteUserUseCase } from '~/modules/users/application/delete-user.usecase'
 import type { User } from '~/modules/users/domain/user.model'
 
-// Ajustamos las columnas a las propiedades reales de tu interfaz de dominio 'User'
 const columns = [
   { key: 'avatar', label: 'Usuario' },
   { key: 'name', label: 'Nombre', sortable: true },
@@ -108,34 +107,38 @@ const items = (row: User) => [
         <UInput v-model="search" icon="i-heroicons-magnifying-glass" placeholder="Buscar..." class="w-full" />
       </div>
 
-      <div class="overflow-x-auto">
+      <div class="w-full overflow-x-auto min-w-full inline-block align-middle">
         <UTable :columns="columns" :rows="filteredUsers" :loading="pending" class="w-full">
           
           <template #avatar-data="{ row }">
-            <div class="flex items-center gap-3 min-w-[180px]">
+            <div class="flex items-center gap-3 min-w-[200px] py-2">
               <UAvatar :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(row.name || 'U')}`" size="sm" />
-              <span class="text-xs font-mono text-gray-500 break-all w-24 block">{{ getUserId(row) }}</span>
+              <span class="text-xs font-mono text-gray-500 block select-all">{{ getUserId(row) }}</span>
             </div>
           </template>
 
           <template #name-data="{ row }">
-            <span class="font-semibold text-gray-900 dark:text-white whitespace-nowrap">{{ row.name || 'Sin nombre' }}</span>
+            <span class="font-semibold text-gray-900 dark:text-white whitespace-nowrap block min-w-[120px]">{{ row.name || 'Sin nombre' }}</span>
           </template>
 
           <template #email-data="{ row }">
-            <span class="text-gray-600 dark:text-gray-300 whitespace-nowrap">{{ row.email || 'N/A' }}</span>
+            <span class="text-gray-600 dark:text-gray-300 whitespace-nowrap block min-w-[180px]">{{ row.email || 'N/A' }}</span>
           </template>
 
           <template #role-data="{ row }">
-            <UBadge :color="row.role === 'admin' ? 'red' : 'green'" variant="subtle" size="xs" class="capitalize">
-              {{ row.role === 'admin' ? 'Admin' : 'Cliente' }}
-            </UBadge>
+            <div class="min-w-[80px]">
+              <UBadge :color="row.role === 'admin' ? 'red' : 'green'" variant="subtle" size="xs" class="capitalize">
+                {{ row.role === 'admin' ? 'Admin' : 'Cliente' }}
+              </UBadge>
+            </div>
           </template>
 
           <template #actions-data="{ row }">
-            <UDropdown :items="items(row)">
-              <UButton color="gray" variant="ghost" icon="i-heroicons-ellipsis-horizontal" />
-            </UDropdown>
+            <div class="min-w-[60px]">
+              <UDropdown :items="items(row)">
+                <UButton color="gray" variant="ghost" icon="i-heroicons-ellipsis-horizontal" />
+              </UDropdown>
+            </div>
           </template>
 
         </UTable>
