@@ -14,33 +14,45 @@ export default defineEventHandler(async (event) => {
     const usersList = Array.isArray(response) ? response : response.data || []
 
     return usersList.map((u: any) => {
-      // Forzamos a que el ID sea un string completo por si viene como ObjectId de MongoDB
-      const userId = u.id || u._id || String(u);
+      // 1. Extraemos el nombre real buscando en todas las propiedades posibles del backend
+      // Si todo falla, extrae la primera parte del correo (ej: "fabricio")
+      const nombreReal = u.nombre || u.name || u.username || (u.email ? u.email.split('@')[0] : 'Usuario Registrado');
 
-      // MAPEO DEL NOMBRE COMPLETO: Buscamos todas las combinaciones posibles del backend
-      const userName = u.nombre || u.name || u.username || 'Usuario Registrado';
+      // 2. Forzamos el ID a que sea un texto limpio completo
+      const idReal = u.id || u._id || String(u);
 
-      // MAPEO DEL ROL: Buscamos si viene como 'rol', 'role' o en el array 'roles'
-      let userRole = 'client';
+      // 3. Mapeamos el rol asegurando compatibilidad con tu diseño de frontend
+      let rolReal = 'client';
       if (Array.isArray(u.roles) && u.roles.length > 0) {
-        userRole = u.roles[0];
+        rolReal = u.roles[0];
       } else if (u.rol || u.role) {
-        userRole = u.rol || u.role;
+        rolReal = u.rol || u.role;
       }
+      
+      // Normalizamos el rol a formato inglés estándar por si acaso
+      rolReal = rolReal.toLowerCase().includes('admin') ? 'admin' : 'client';
 
-      // Limpiamos los roles típicos de Spring/Express para que se adapten a tu interfaz ('admin' o 'client')
-      userRole = userRole.toLowerCase().includes('admin') ? 'admin' : 'client';
-
+      // ENVIAMOS EL OBJETO CON DUPLICIDAD DE CAMPOS
+      // Esto asegura que la tabla lea el campo correcto sin importar cómo esté programada la vista
       return {
-        id: userId,
-        name: userName, // <-- Aquí ya no saldrá "Sin Nombre", usará el dato real
-        email: u.email || 'sin-email@ukiyo.es',
-        role: userRole,
+        id: idReal,
+        _id: idReal,
+        
+        name: nombreReal,     // Si la tabla busca user.name
+        nombre: nombreReal,   // Si la tabla busca user.nombre
+        username: nombreReal, // Si la tabla busca user.username
+        
+        email: u.email || 'sin-email@ukiyo.com',
+        
+        role: rolReal,        // Si la tabla busca user.role
+        rol: rolReal,         // Si la tabla busca user.rol
+        
         created_at: u.createdAt || u.fechaCreacion || u.created_at || new Date().toISOString()
       }
     })
 
   } catch (error: any) {
+    // Imprime el error en la terminal de tu servidor de MicroK8s
     console.error(`❌ Error Gateway Usuarios:`, error)
     
     throw createError({
