@@ -1,7 +1,7 @@
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
   
-  const gatewayUrl = config.public.apiBase || 'http://ukiyocazorla.es'
+  const gatewayUrl = config.public.apiBase || 'https://ukiyocazorla.es'
 
   try {
     console.log(`🔌 Conectando Usuarios a: ${gatewayUrl}/api/usuarios`)
@@ -13,23 +13,39 @@ export default defineEventHandler(async (event) => {
 
     const usersList = Array.isArray(response) ? response : response.data || []
 
-    return usersList.map((u: any) => ({
-      id: u.id,
-      name: u.username || u.nombre || 'Sin Nombre',
-      email: u.email,
-      role: Array.isArray(u.roles) ? u.roles[0] : (u.rol || 'USER'),
-      created_at: u.createdAt || u.fechaCreacion || new Date().toISOString()
-    }))
+    return usersList.map((u: any) => {
+      // Forzamos a que el ID sea un string completo por si viene como ObjectId de MongoDB
+      const userId = u.id || u._id || String(u);
+
+      // MAPEO DEL NOMBRE COMPLETO: Buscamos todas las combinaciones posibles del backend
+      const userName = u.nombre || u.name || u.username || 'Usuario Registrado';
+
+      // MAPEO DEL ROL: Buscamos si viene como 'rol', 'role' o en el array 'roles'
+      let userRole = 'client';
+      if (Array.isArray(u.roles) && u.roles.length > 0) {
+        userRole = u.roles[0];
+      } else if (u.rol || u.role) {
+        userRole = u.rol || u.role;
+      }
+
+      // Limpiamos los roles típicos de Spring/Express para que se adapten a tu interfaz ('admin' o 'client')
+      userRole = userRole.toLowerCase().includes('admin') ? 'admin' : 'client';
+
+      return {
+        id: userId,
+        name: userName, // <-- Aquí ya no saldrá "Sin Nombre", usará el dato real
+        email: u.email || 'sin-email@ukiyo.es',
+        role: userRole,
+        created_at: u.createdAt || u.fechaCreacion || u.created_at || new Date().toISOString()
+      }
+    })
 
   } catch (error: any) {
-    // Imprimimos el error completo en la consola de tu servidor (PowerShell)
     console.error(`❌ Error Gateway Usuarios:`, error)
     
-    // Lanzamos un error HTTP real hacia el navegador
     throw createError({
       statusCode: error.response?.status || 500,
       statusMessage: error.message || 'Fallo de conexión con el API Gateway',
-      // Si el servidor de tu compañero llega a devolver un JSON con un mensaje de error, lo pasamos aquí
       data: error.data || null 
     })
   }
