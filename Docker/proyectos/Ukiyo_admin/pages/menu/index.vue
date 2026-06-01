@@ -31,10 +31,14 @@ const loadDishes = async () => {
   pending.value = true
   errorMsg.value = ''
   try {
-    dbDishes.value = await getProductsUseCase.execute()
+    const data = await getProductsUseCase.execute()
+    dbDishes.value = Array.isArray(data) ? data : []
   } catch (err: any) {
-    errorMsg.value = err.message || 'No se pudieron cargar los productos.'
+    console.warn('La API devolvió un error o la base de datos está vacía:', err)
+    // CRÍTICO: Si la API falla o está vacía, forzamos un array vacío para desbloquear el estado "Cargando"
+    dbDishes.value = []
   } finally {
+    // CRÍTICO: Garantiza que el spinner se detenga siempre
     pending.value = false
   }
 }
@@ -43,17 +47,21 @@ onMounted(() => {
   loadDishes()
 })
 
-// Lógica de filtrado reactivo local
+// Lógica de filtrado reactivo local protegida contra valores nulos
 const filteredDishes = computed(() => {
-  if (!dbDishes.value) return []
+  if (!dbDishes.value || !Array.isArray(dbDishes.value)) return []
+  
+  const query = search.value.toLowerCase()
   return dbDishes.value.filter((dish) => {
-    const matchesSearch = dish.name.toLowerCase().includes(search.value.toLowerCase())
+    if (!dish) return false
+    const name = (dish.name || '').toLowerCase()
+    const matchesSearch = name.includes(query)
     const matchesCategory = selectedCategory.value === 'Todas' || dish.category === selectedCategory.value
     return matchesSearch && matchesCategory
   })
 })
 
-// Acción de borrar real conectada al repositorio sin necesidad del programador
+// Acción de borrar real conectada al repositorio
 const deleteDish = async (id: string | undefined) => {
   if (!id) return
   if (confirm('⚠️ ¿Seguro que deseas eliminar este plato definitivamente de la carta? El usuario no volverá a verlo.')) {
@@ -137,14 +145,37 @@ const items = (row: Product) => [
         :rows="filteredDishes" 
         :loading="pending"
         class="w-full overflow-x-auto"
-        :empty-state="{ icon: 'i-heroicons-circle-stack', label: 'No hay platos registrados.' }"
       >
+        <!-- Estado Personalizado Completo cuando la Base de Datos está vacía -->
+        <template #empty-state>
+          <div class="flex flex-col items-center justify-center py-12 px-4 text-center">
+            <div class="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 mb-4">
+              <UIcon name="i-heroicons-circle-stack" class="w-6 h-6" />
+            </div>
+            <p class="text-sm font-semibold text-gray-900 dark:text-white">No hay platos registrados</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-sm">
+              La carta del restaurante está vacía en este momento. Añade el primer producto para empezar.
+            </p>
+            <UButton 
+              icon="i-heroicons-plus" 
+              color="primary" 
+              variant="solid" 
+              class="mt-4 text-xs font-bold uppercase"
+              to="/menu/new"
+            >
+              Insertar Nuevo Plato
+            </UButton>
+          </div>
+        </template>
+
         <template #name-data="{ row }">
           <span class="font-bold text-gray-900 dark:text-white text-base">{{ row.name }}</span>
         </template>
 
         <template #price-data="{ row }">
-          <span class="font-mono font-bold text-gray-900 dark:text-white">{{ Number(row.price).toFixed(2) }}€</span>
+          <span class="font-mono font-bold text-gray-900 dark:text-white">
+            {{ row.price ? Number(row.price).toFixed(2) : '0.00' }}€
+          </span>
         </template>
 
         <template #available-data="{ row }">

@@ -24,17 +24,17 @@ const pending = ref(false)
 const errorMsg = ref('')
 const search = ref('')
 
-const getUserId = (user: any): string => {
-  return user.id || user._id || ''
-}
+const getUserId = (user: any): string => user?.id || user?._id || 'N/A'
 
 const loadUsers = async () => {
   pending.value = true
   errorMsg.value = ''
   try {
-    rawUsers.value = await getUsersUseCase.execute()
+    const data = await getUsersUseCase.execute()
+    rawUsers.value = Array.isArray(data) ? data : []
   } catch (err: any) {
-    errorMsg.value = err.message || 'No se pudieron recuperar los usuarios del sistema.'
+    errorMsg.value = err.message || 'No se pudieron recuperar los usuarios.'
+    rawUsers.value = []
   } finally {
     pending.value = false
   }
@@ -46,19 +46,17 @@ onMounted(() => {
 
 const filteredUsers = computed(() => {
   if (!rawUsers.value) return []
+  const query = search.value.toLowerCase()
   return rawUsers.value.filter((user) => {
-    const query = search.value.toLowerCase()
-    return (
-      (user.name && user.name.toLowerCase().includes(query)) || 
-      (user.email && user.email.toLowerCase().includes(query))
-    )
+    const name = (user.name || '').toLowerCase()
+    const email = (user.email || '').toLowerCase()
+    return name.includes(query) || email.includes(query)
   })
 })
 
 const handleToggleRole = async (user: User) => {
-  const userId = getUserId(user)
   try {
-    await updateUserRoleUseCase.execute(userId, user.role)
+    await updateUserRoleUseCase.execute(getUserId(user), user.role)
     await loadUsers() 
   } catch (err: any) {
     alert(err.message || 'Error al cambiar el rol.')
@@ -66,13 +64,12 @@ const handleToggleRole = async (user: User) => {
 }
 
 const handleDeleteUser = async (user: User) => {
-  const userId = getUserId(user)
-  if (confirm('⚠️ ¿Seguro que deseas eliminar a este usuario? Perderá el acceso a su cuenta y este cambio es irreversible.')) {
+  if (confirm('⚠️ ¿Seguro que deseas eliminar a este usuario?')) {
     try {
-      await deleteUserUseCase.execute(userId)
+      await deleteUserUseCase.execute(getUserId(user))
       await loadUsers()
     } catch (err: any) {
-      alert(err.message || 'Error al dar de baja al usuario.')
+      alert(err.message || 'Error al dar de baja.')
     }
   }
 }
@@ -86,7 +83,7 @@ const items = (row: User) => [
   [{
     label: 'Eliminar Usuario',
     icon: 'i-heroicons-user-minus',
-    class: 'text-red-500 dark:text-red-400',
+    class: 'text-red-500',
     click: () => handleDeleteUser(row)
   }]
 ]
@@ -94,94 +91,48 @@ const items = (row: User) => [
 
 <template>
   <div>
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+    <div class="flex flex-col sm:flex-row justify-between items-start mb-6 gap-4">
       <div>
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Gestión de Usuarios</h1>
-        <p class="text-gray-500 text-sm">Controla las cuentas de los clientes y los permisos del panel.</p>
       </div>
-      
-      <UButton 
-        icon="i-heroicons-arrow-path" 
-        color="gray" 
-        variant="ghost" 
-        :loading="pending" 
-        @click="loadUsers"
-        class="w-full sm:w-auto justify-center"
-      >
+      <UButton icon="i-heroicons-arrow-path" color="gray" variant="ghost" :loading="pending" @click="loadUsers">
         Recargar Lista
       </UButton>
     </div>
 
-    <UAlert 
-      v-if="errorMsg"
-      title="Error de comunicación con el clúster"
-      :description="errorMsg"
-      color="red"
-      variant="soft"
-      icon="i-heroicons-exclamation-triangle"
-      class="mb-6"
-    />
+    <UAlert v-if="errorMsg" title="Error" :description="errorMsg" color="red" variant="soft" class="mb-6" />
 
-    <UCard :ui="{ body: { padding: 'p-0 sm:p-0' } }">
-      <div class="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
-        <UInput 
-          v-model="search" 
-          icon="i-heroicons-magnifying-glass" 
-          placeholder="Buscar usuario por nombre o correo electrónico..." 
-          class="w-full"
-          autofocus
-        />
+    <UCard :ui="{ body: { padding: 'p-0' } }">
+      <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+        <UInput v-model="search" icon="i-heroicons-magnifying-glass" placeholder="Buscar..." class="w-full" />
       </div>
 
-      <UTable 
-        :columns="columns" 
-        :rows="filteredUsers" 
-        :loading="pending"
-        class="w-full overflow-x-auto"
-        :empty-state="{ icon: 'i-heroicons-users', label: 'No se encontraron usuarios con esos criterios.' }"
-      >
+      <UTable :columns="columns" :rows="filteredUsers" :loading="pending">
         <template #avatar-data="{ row }">
-          <div class="flex items-center gap-3 py-1">
-            <UAvatar 
-              :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(row.name || 'U')}&background=random&color=fff`" 
-              size="sm" 
-            />
-            <div class="flex flex-col">
-              <span class="text-xs font-mono text-gray-400 dark:text-gray-500">
-                #{{ getUserId(row).slice(0, 8) }}...
-              </span>
-            </div>
+          <div class="flex items-center gap-3">
+            <UAvatar :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(row.name || 'U')}`" size="sm" />
+            <span class="text-xs font-mono text-gray-500 break-all w-24">{{ getUserId(row) }}</span>
           </div>
         </template>
 
         <template #name-data="{ row }">
-          <span class="font-semibold text-gray-900 dark:text-white">{{ row.name || 'Sin nombre' }}</span>
+          <span class="font-semibold">{{ row.name || 'Sin nombre' }}</span>
         </template>
 
         <template #email-data="{ row }">
-          <span class="text-gray-600 dark:text-gray-300">{{ row.email }}</span>
+          <span class="text-gray-600 dark:text-gray-300">{{ row.email || 'N/A' }}</span>
         </template>
 
         <template #role-data="{ row }">
-          <UBadge 
-            :color="row.role === 'admin' ? 'red' : 'green'" 
-            variant="subtle" 
-            size="xs"
-            class="uppercase font-bold tracking-wider"
-          >
+          <UBadge :color="row.role === 'admin' ? 'red' : 'green'" variant="subtle" size="xs">
             {{ row.role === 'admin' ? 'Admin' : 'Cliente' }}
           </UBadge>
         </template>
 
         <template #actions-data="{ row }">
-          <ClientOnly>
-            <UDropdown :items="items(row)">
-              <UButton color="gray" variant="ghost" icon="i-heroicons-ellipsis-horizontal-20-solid" />
-            </UDropdown>
-            <template #fallback>
-              <UButton color="gray" variant="ghost" icon="i-heroicons-ellipsis-horizontal-20-solid" disabled class="opacity-50" />
-            </template>
-          </ClientOnly>
+          <UDropdown :items="items(row)">
+            <UButton color="gray" variant="ghost" icon="i-heroicons-ellipsis-horizontal" />
+          </UDropdown>
         </template>
       </UTable>
     </UCard>
