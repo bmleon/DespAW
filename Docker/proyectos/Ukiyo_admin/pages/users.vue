@@ -6,9 +6,10 @@ import { UpdateUserRoleUseCase } from '~/modules/users/application/update-user-r
 import { DeleteUserUseCase } from '~/modules/users/application/delete-user.usecase'
 import type { User } from '~/modules/users/domain/user.model'
 
+// Truco definitivo de Nuxt UI: Le decimos que busque la clave 'username' directamente de la respuesta de la API
 const columns = [
   { key: 'avatar', label: 'Usuario' },
-  { key: 'name', label: 'Nombre', sortable: true },
+  { key: 'username', label: 'Nombre', sortable: true }, // <--- Cambiado de 'name' a 'username'
   { key: 'email', label: 'Email', sortable: true },
   { key: 'role', label: 'Rol', sortable: true },
   { key: 'actions', label: 'Acciones' }
@@ -19,15 +20,12 @@ const getUsersUseCase = new GetUsersUseCase(userRepository)
 const updateUserRoleUseCase = new UpdateUserRoleUseCase(userRepository)
 const deleteUserUseCase = new DeleteUserUseCase(userRepository)
 
-const rawUsers = ref<any[]>([]) // Permitimos tipos dinámicos para tolerar el JSON real
+const rawUsers = ref<any[]>([])
 const pending = ref(false)
 const errorMsg = ref('')
 const search = ref('')
 
 const getUserId = (user: any): string => user?.id || user?._id || 'N/A'
-
-// Función auxiliar para extraer el nombre real venga en la propiedad que venga
-const getUserName = (user: any): string => user?.username || user?.name || user?.nombre || 'Sin nombre'
 
 const loadUsers = async () => {
   pending.value = true
@@ -51,7 +49,8 @@ const filteredUsers = computed(() => {
   if (!rawUsers.value) return []
   const query = search.value.toLowerCase()
   return rawUsers.value.filter((user) => {
-    const name = getUserName(user).toLowerCase() // Corrige el filtro anti-congelamiento usando el username real
+    // Buscamos tanto en username como en email
+    const name = (user.username || user.name || '').toLowerCase()
     const email = (user.email || '').toLowerCase()
     return name.includes(query) || email.includes(query)
   })
@@ -113,13 +112,13 @@ const items = (row: any) => [
       <UTable :columns="columns" :rows="filteredUsers" :loading="pending">
         <template #avatar-data="{ row }">
           <div class="flex items-center gap-3">
-            <UAvatar :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(getUserName(row))}`" size="sm" />
-            <span class="text-xs font-mono text-gray-500 whitespace-nowrap">{{ getUserId(row) }}</span>
+            <UAvatar :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(row.username || row.name || 'U')}`" size="sm" />
+            <span class="text-xs font-mono text-gray-500 break-all w-24">{{ getUserId(row) }}</span>
           </div>
         </template>
 
-        <template #name-data="{ row }">
-          <span class="font-semibold text-gray-900 dark:text-white">{{ getUserName(row) }}</span>
+        <template #username-data="{ row }">
+          <span class="font-semibold text-gray-900 dark:text-white">{{ row.username || row.name || 'Sin nombre' }}</span>
         </template>
 
         <template #email-data="{ row }">
