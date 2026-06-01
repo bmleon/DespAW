@@ -1,20 +1,18 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 
-// Repositorios y Casos de Uso del módulo de Productos
-import { ApiProductRepository } from '../modules/products/infrastructure/api-product.repository'
-import { GetProductsUseCase } from '../modules/products/application/get-products.usecase'
-import type { Product } from '../modules/products/domain/product.model'
+// --- REPOSITORIOS Y CASOS DE USO CON ALIAS NATIVOS DE NUXT (Elimina errores de ruta) ---
+import { ApiProductRepository } from '~/modules/products/infrastructure/api-product.repository'
+import { GetProductsUseCase } from '~/modules/products/application/get-products.usecase'
+import type { Product } from '~/modules/products/domain/product.model'
 
-// Repositorios y Casos de Uso del módulo de Pedidos
-import { ApiOrderRepository } from '../modules/orders/infrastructure/api-order.repository'
-import { GetOrdersUseCase } from '../modules/orders/application/get-orders.usecase'
-import type { Order } from '../modules/orders/domain/order.model'
+import { ApiOrderRepository } from '~/modules/orders/infrastructure/api-order.repository'
+import { GetOrdersUseCase } from '~/modules/orders/application/get-orders.usecase'
+import type { Order } from '~/modules/orders/domain/order.model'
 
-// Repositorios y Casos de Uso del módulo de Usuarios
-import { ApiUserRepository } from '../modules/users/infrastructure/api-user.repository'
-import { GetUsersUseCase } from '../modules/users/application/get-users.usecase'
-import type { User } from '../modules/users/domain/user.model'
+import { ApiUserRepository } from '~/modules/users/infrastructure/api-user.repository'
+import { GetUsersUseCase } from '~/modules/users/application/get-users.usecase'
+import type { User } from '~/modules/users/domain/user.model'
 
 // --- LÓGICA DE SALUDO INTELIGENTE ---
 const userName = ref('Admin') 
@@ -57,9 +55,12 @@ const loadDashboardData = async () => {
       getUsersUseCase.execute()
     ])
     
-    products.value = productsData
-    orders.value = ordersData
-    users.value = usersData
+    products.value = Array.isArray(productsData) ? productsData : []
+    orders.value = Array.isArray(ordersData) ? ordersData : []
+    users.value = Array.isArray(usersData) ? usersData : []
+    
+    // Test rápido por consola del servidor para verificar qué llega al index
+    console.log(`📊 Dashboard sincronizado: ${users.value.length} usuarios cargados.`)
   } catch (error) {
     console.error('Error cargando el dashboard a través de los casos de uso:', error)
   }
