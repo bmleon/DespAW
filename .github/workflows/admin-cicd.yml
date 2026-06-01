@@ -5,6 +5,10 @@ on:
     branches:
       - master
 
+# 🌟 ESTO ES LO QUE SOLUCIONA EL ERROR 403: Le da permisos al bot para hacer el 'git push'
+permissions:
+  contents: write
+
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
@@ -38,7 +42,7 @@ jobs:
           git config --global user.name "GitHub Actions Bot"
           git config --global user.email "actions@github.com"
           
-          # Generamos la marca de tiempo exacta del despliegue (ej: 01-Jun-2026_20-30)
+          # Generamos la marca de tiempo exacta del despliegue
           TIMESTAMP=$(date +'%d-%b-%Y_%H-%M')
           
           # Buscamos la línea FORCE_RESTART_FECHA e inyectamos el value con el timestamp actual
