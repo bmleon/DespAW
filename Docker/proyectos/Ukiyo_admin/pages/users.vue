@@ -107,43 +107,45 @@ const items = (row: User) => [
         <UInput v-model="search" icon="i-heroicons-magnifying-glass" placeholder="Buscar..." class="w-full" />
       </div>
 
-      <div class="w-full overflow-x-auto block position-relative">
+      <div class="w-full overflow-x-auto block">
         
         <UTable 
           :columns="columns" 
           :rows="filteredUsers" 
           :loading="pending" 
-          class="min-w-[750px] w-full table-fixed"
-          :ui="{ wrapper: 'overflow-x-auto', base: 'min-w-full table-fixed' }"
+          style="min-width: 850px;"
+          :ui="{ wrapper: 'overflow-x-auto', base: 'w-full table-auto' }"
         >
           
           <template #avatar-data="{ row }">
-            <div class="flex items-center gap-3 py-2">
+            <div class="flex items-center gap-3 py-2 min-w-[180px]">
               <UAvatar :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(row.name || 'U')}`" size="sm" />
-              <span class="text-xs font-mono text-gray-500 block select-all truncate max-w-[140px]">{{ getUserId(row) }}</span>
+              <span class="text-xs font-mono text-gray-500 block select-all truncate">{{ getUserId(row) }}</span>
             </div>
           </template>
 
           <template #name-data="{ row }">
-            <span class="font-semibold text-gray-900 dark:text-white whitespace-nowrap block truncate max-w-[150px]">{{ row.name || 'Sin nombre' }}</span>
+            <span class="font-semibold text-gray-900 dark:text-white whitespace-nowrap block min-w-[140px]">{{ row.name || 'Sin nombre' }}</span>
           </template>
 
           <template #email-data="{ row }">
-            <span class="text-gray-600 dark:text-gray-300 whitespace-nowrap block truncate max-w-[200px]">{{ row.email || 'N/A' }}</span>
+            <span class="text-gray-600 dark:text-gray-300 whitespace-nowrap block min-w-[200px]">{{ row.email || 'N/A' }}</span>
           </template>
 
           <template #role-data="{ row }">
-            <span class="inline-block">
+            <div class="min-w-[100px]">
               <UBadge :color="row.role === 'admin' ? 'red' : 'green'" variant="subtle" size="xs" class="capitalize">
                 {{ row.role === 'admin' ? 'Admin' : 'Cliente' }}
               </UBadge>
-            </span>
+            </div>
           </template>
 
           <template #actions-data="{ row }">
-            <UDropdown :items="items(row)">
-              <UButton color="gray" variant="ghost" icon="i-heroicons-ellipsis-horizontal" />
-            </UDropdown>
+            <div class="min-w-[50px] text-center">
+              <UDropdown :items="items(row)">
+                <UButton color="gray" variant="ghost" icon="i-heroicons-ellipsis-horizontal" />
+              </UDropdown>
+            </div>
           </template>
 
         </UTable>
