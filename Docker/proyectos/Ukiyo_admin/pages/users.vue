@@ -6,10 +6,10 @@ import { UpdateUserRoleUseCase } from '~/modules/users/application/update-user-r
 import { DeleteUserUseCase } from '~/modules/users/application/delete-user.usecase'
 import type { User } from '~/modules/users/domain/user.model'
 
-// Truco definitivo de Nuxt UI: Le decimos que busque la clave 'username' directamente de la respuesta de la API
+// Ajustamos las columnas a las propiedades reales de tu interfaz de dominio 'User'
 const columns = [
   { key: 'avatar', label: 'Usuario' },
-  { key: 'username', label: 'Nombre', sortable: true }, // <--- Cambiado de 'name' a 'username'
+  { key: 'name', label: 'Nombre', sortable: true },
   { key: 'email', label: 'Email', sortable: true },
   { key: 'role', label: 'Rol', sortable: true },
   { key: 'actions', label: 'Acciones' }
@@ -20,12 +20,12 @@ const getUsersUseCase = new GetUsersUseCase(userRepository)
 const updateUserRoleUseCase = new UpdateUserRoleUseCase(userRepository)
 const deleteUserUseCase = new DeleteUserUseCase(userRepository)
 
-const rawUsers = ref<any[]>([])
+const rawUsers = ref<User[]>([])
 const pending = ref(false)
 const errorMsg = ref('')
 const search = ref('')
 
-const getUserId = (user: any): string => user?.id || user?._id || 'N/A'
+const getUserId = (user: User): string => user?.id || 'N/A'
 
 const loadUsers = async () => {
   pending.value = true
@@ -49,23 +49,22 @@ const filteredUsers = computed(() => {
   if (!rawUsers.value) return []
   const query = search.value.toLowerCase()
   return rawUsers.value.filter((user) => {
-    // Buscamos tanto en username como en email
-    const name = (user.username || user.name || '').toLowerCase()
+    const name = (user.name || '').toLowerCase()
     const email = (user.email || '').toLowerCase()
     return name.includes(query) || email.includes(query)
   })
 })
 
-const handleToggleRole = async (user: any) => {
+const handleToggleRole = async (user: User) => {
   try {
-    await updateUserRoleUseCase.execute(getUserId(user), user.role || 'client')
+    await updateUserRoleUseCase.execute(getUserId(user), user.role)
     await loadUsers() 
   } catch (err: any) {
     alert(err.message || 'Error al cambiar el rol.')
   }
 }
 
-const handleDeleteUser = async (user: any) => {
+const handleDeleteUser = async (user: User) => {
   if (confirm('⚠️ ¿Seguro que deseas eliminar a este usuario?')) {
     try {
       await deleteUserUseCase.execute(getUserId(user))
@@ -76,7 +75,7 @@ const handleDeleteUser = async (user: any) => {
   }
 }
 
-const items = (row: any) => [
+const items = (row: User) => [
   [{
     label: row.role === 'admin' ? 'Quitar Administrador' : 'Hacer Administrador',
     icon: 'i-heroicons-shield-check',
@@ -109,34 +108,38 @@ const items = (row: any) => [
         <UInput v-model="search" icon="i-heroicons-magnifying-glass" placeholder="Buscar..." class="w-full" />
       </div>
 
-      <UTable :columns="columns" :rows="filteredUsers" :loading="pending">
-        <template #avatar-data="{ row }">
-          <div class="flex items-center gap-3">
-            <UAvatar :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(row.username || row.name || 'U')}`" size="sm" />
-            <span class="text-xs font-mono text-gray-500 break-all w-24">{{ getUserId(row) }}</span>
-          </div>
-        </template>
+      <div class="overflow-x-auto">
+        <UTable :columns="columns" :rows="filteredUsers" :loading="pending" class="w-full">
+          
+          <template #avatar-data="{ row }">
+            <div class="flex items-center gap-3 min-w-[180px]">
+              <UAvatar :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(row.name || 'U')}`" size="sm" />
+              <span class="text-xs font-mono text-gray-500 break-all w-24 block">{{ getUserId(row) }}</span>
+            </div>
+          </template>
 
-        <template #username-data="{ row }">
-          <span class="font-semibold text-gray-900 dark:text-white">{{ row.username || row.name || 'Sin nombre' }}</span>
-        </template>
+          <template #name-data="{ row }">
+            <span class="font-semibold text-gray-900 dark:text-white whitespace-nowrap">{{ row.name || 'Sin nombre' }}</span>
+          </template>
 
-        <template #email-data="{ row }">
-          <span class="text-gray-600 dark:text-gray-300">{{ row.email || 'N/A' }}</span>
-        </template>
+          <template #email-data="{ row }">
+            <span class="text-gray-600 dark:text-gray-300 whitespace-nowrap">{{ row.email || 'N/A' }}</span>
+          </template>
 
-        <template #role-data="{ row }">
-          <UBadge :color="row.role === 'admin' ? 'red' : 'green'" variant="subtle" size="xs">
-            {{ row.role === 'admin' ? 'Admin' : 'Cliente' }}
-          </UBadge>
-        </template>
+          <template #role-data="{ row }">
+            <UBadge :color="row.role === 'admin' ? 'red' : 'green'" variant="subtle" size="xs" class="capitalize">
+              {{ row.role === 'admin' ? 'Admin' : 'Cliente' }}
+            </UBadge>
+          </template>
 
-        <template #actions-data="{ row }">
-          <UDropdown :items="items(row)">
-            <UButton color="gray" variant="ghost" icon="i-heroicons-ellipsis-horizontal" />
-          </UDropdown>
-        </template>
-      </UTable>
+          <template #actions-data="{ row }">
+            <UDropdown :items="items(row)">
+              <UButton color="gray" variant="ghost" icon="i-heroicons-ellipsis-horizontal" />
+            </UDropdown>
+          </template>
+
+        </UTable>
+      </div>
     </UCard>
   </div>
 </template>
