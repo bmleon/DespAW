@@ -19,44 +19,36 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Get Git Short SHA
-        id: vars
-        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-
-      # LOGIN DOCKER HUB
       - name: Login Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # BUILD con el identificador del commit único
       - name: Construir imagen Docker
         run: |
-          docker build -t bmleon/webcliente:${{ steps.vars.outputs.sha_short }} -t bmleon/webcliente:latest -f deploy/Dockerfile .
+          docker build -t bmleon/webcliente:latest -f deploy/Dockerfile .
 
-      # PUSH
       - name: Subir imagen Docker Hub
         run: |
-          docker push bmleon/webcliente:${{ steps.vars.outputs.sha_short }}
           docker push bmleon/webcliente:latest
 
-      # Modificamos tu archivo usando un buscador más flexible basado solo en la palabra clave 'webcliente'
       - name: Actualizar Kubernetes Deployment YAML
         run: |
           git config --global user.name "GitHub Actions Bot"
           git config --global user.email "actions@github.com"
           
-          # Buscador ultra-flexible: cambia cualquier cosa que contenga webcliente: dentro de comillas
-          sed -i 's|image: ".*webcliente:.*"|image: "bmleon/webcliente:${{ steps.vars.outputs.sha_short }}"|g' deploy/kubernetes/deploy-webcliente.yml
+          TIMESTAMP=$(date +'%d-%b-%Y_%H-%M')
           
-          # Volvemos a la raíz del repositorio
+          # Buscamos la línea FORCE_RESTART_FECHA en tu archivo deploy-webcliente.yml
+          sed -i "s|name: FORCE_RESTART_FECHA.*|name: FORCE_RESTART_FECHA\n          value: \"$TIMESTAMP\"|g" deploy/kubernetes/deploy-webcliente.yml
+          
+          # Salimos a la raíz del repositorio completo para confirmar los cambios en Git
           cd ../../../
-          
-          # Añadimos control de errores: Solo hace commit si hay cambios reales detectados por Git
           git add Docker/proyectos/web_ukiyo_nuxt/deploy/kubernetes/deploy-webcliente.yml
+          
           if ! git diff --cached --quiet; then
-            git commit -m "chore(deploy): update frontend image tag to ${{ steps.vars.outputs.sha_short }} [skip ci]"
+            git commit -m "chore(deploy): force frontend restart $TIMESTAMP [skip ci]"
             git push origin master
           else
             echo "No se detectaron cambios en el archivo deploy-webcliente.yml"

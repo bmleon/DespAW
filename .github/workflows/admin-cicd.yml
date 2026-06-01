@@ -19,10 +19,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Get Git Short SHA
-        id: vars
-        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-
       - name: Login Docker Hub
         uses: docker/login-action@v3
         with:
@@ -31,29 +27,31 @@ jobs:
 
       - name: Construir imagen Docker
         run: |
-          docker build -t bmleon/ukiyo-admin:${{ steps.vars.outputs.sha_short }} -t bmleon/ukiyo-admin:latest -f deploy/Dockerfile .
+          docker build -t bmleon/ukiyo-admin:latest -f deploy/Dockerfile .
 
       - name: Subir imagen Docker Hub
         run: |
-          docker push bmleon/ukiyo-admin:${{ steps.vars.outputs.sha_short }}
           docker push bmleon/ukiyo-admin:latest
 
-      # Modificamos tu archivo usando un buscador más flexible basado solo en la palabra clave 'ukiyo-admin'
       - name: Actualizar Kubernetes Deployment YAML
         run: |
           git config --global user.name "GitHub Actions Bot"
           git config --global user.email "actions@github.com"
           
-          # Buscador ultra-flexible: cambia cualquier cosa que contenga ukiyo-admin: dentro de comillas
-          sed -i 's|image: ".*ukiyo-admin:.*"|image: "bmleon/ukiyo-admin:${{ steps.vars.outputs.sha_short }}"|g' deploy/kubernetes/deploy-admin.yml
+          # Generamos la marca de tiempo exacta del despliegue (ej: 01-Jun-2026_20-30)
+          TIMESTAMP=$(date +'%d-%b-%Y_%H-%M')
           
-          # Volvemos a la raíz del repositorio
+          # Buscamos la línea FORCE_RESTART_FECHA e inyectamos el value con el timestamp actual
+          sed -i 's|value: "[0-9]\{2\}-[a-zA-Z]\{4,5\}-[0-9]\{4\}-v[0-9]"|value: "'"$TIMESTAMP"'"|g' deploy/kubernetes/deploy-admin.yml
+          # Por si el formato anterior guardado en Git fuera diferente, aseguramos el cambio:
+          sed -i "s|name: FORCE_RESTART_FECHA.*|name: FORCE_RESTART_FECHA\n          value: \"$TIMESTAMP\"|g" deploy/kubernetes/deploy-admin.yml
+          
+          # Salimos a la raíz del repositorio completo para confirmar los cambios en Git
           cd ../../../
-          
-          # Añadimos control de errores: Solo hace commit si hay cambios reales detectados por Git
           git add Docker/proyectos/Ukiyo_admin/deploy/kubernetes/deploy-admin.yml
+          
           if ! git diff --cached --quiet; then
-            git commit -m "chore(deploy): update admin image tag to ${{ steps.vars.outputs.sha_short }} [skip ci]"
+            git commit -m "chore(deploy): force admin restart $TIMESTAMP [skip ci]"
             git push origin master
           else
             echo "No se detectaron cambios en el archivo deploy-admin.yml"
