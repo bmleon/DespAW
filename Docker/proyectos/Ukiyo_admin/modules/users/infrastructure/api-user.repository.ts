@@ -3,48 +3,47 @@ import type { UserRepository } from '../domain/user.repository';
 import type { User } from '../domain/user.model';
 
 export class ApiUserRepository implements UserRepository {
-  private baseUrl = 'https://ukiyocazorla.es/api/usuarios';
+  private baseUrl = 'https://ukiyocazorla.es';
 
-  // 1. Obtener usuarios (Mapea de Español a la interfaz User en Inglés)
   async findAll(): Promise<User[]> {
     try {
-      const data = await ofetch<any[]>(this.baseUrl);
+      const response = await ofetch<any>(this.baseUrl);
       
-      if (!Array.isArray(data)) return [];
+      // Aseguramos capturar el array tanto si viene directo como si viene envuelto en .data
+      const usersList = Array.isArray(response) ? response : response?.data || [];
 
-      // Traducimos el JSON del backend al modelo oficial de tu dominio (Sin 'available')
-      return data.map((item: any) => ({
-        id: item.id || item._id,
-        name: item.nombre || item.name || 'Usuario sin nombre', // Evita el undefined para que toLowerCase() no rompa la web
-        email: item.email || 'Sin correo electrónico',
-        role: item.rol || item.role || 'client' // Mapea 'rol' a 'role'
+      // MAPEADO REAL CON TU JSON:
+      return usersList.map((u: any) => ({
+        id: u.id || u._id || String(u),
+        
+        // SOLUCIÓN AL "Sin nombre": Tu JSON trae 'username', lo asignamos a 'name'
+        name: u.username || u.nombre || u.name || 'Usuario sin nombre', 
+        
+        email: u.email || 'sin-email@ukiyo.com',
+        
+        // Tu JSON NO trae rol, mapeamos uno por defecto seguro para evitar caídas
+        role: u.role || u.rol || 'client' 
       }));
     } catch (error) {
       console.error('Error al obtener los usuarios desde la API:', error);
-      // Devolvemos un array vacío en lugar de romper la pantalla si la API falla temporalmente
+      // RETORNO SEGURO: Devuelve un array vacío en vez de lanzar un 'throw'
+      // Esto rompe el bloqueo del Promise.all y permite que el Dashboard pinte el contador
       return []; 
     }
   }
 
-  // 2. Actualizar Rol (Traduce el rol al DTO que espera el backend)
   async updateRole(id: string, role: 'admin' | 'client'): Promise<User> {
     try {
-      // Si tu backend espera el campo en español (ej: "rol"), lo mapeamos aquí
-      const bodyDto = {
-        rol: role 
-      };
-
-      const response = await ofetch<any>(`${`${this.baseUrl}/${id}/role`}`, {
+      const response = await ofetch<any>(`${this.baseUrl}/${id}/role`, {
         method: 'PUT',
-        body: bodyDto
+        body: { role }
       });
 
-      // Retornamos la respuesta adaptada exactamente a tu interfaz User (Sin 'available')
       return {
         id: response?.id || id,
-        name: response?.nombre || 'Usuario actualizado',
+        name: response?.username || response?.nombre || 'Usuario Actualizado',
         email: response?.email || '',
-        role: response?.rol || response?.role || role
+        role: role
       };
     } catch (error) {
       console.error('Error al actualizar el rol del usuario:', error);
@@ -52,7 +51,6 @@ export class ApiUserRepository implements UserRepository {
     }
   }
 
-  // 3. Eliminar un usuario
   async delete(id: string): Promise<void> {
     try {
       await ofetch(`${this.baseUrl}/${id}`, {
