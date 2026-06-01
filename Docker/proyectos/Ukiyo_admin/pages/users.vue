@@ -19,12 +19,15 @@ const getUsersUseCase = new GetUsersUseCase(userRepository)
 const updateUserRoleUseCase = new UpdateUserRoleUseCase(userRepository)
 const deleteUserUseCase = new DeleteUserUseCase(userRepository)
 
-const rawUsers = ref<User[]>([])
+const rawUsers = ref<any[]>([]) // Permitimos tipos dinámicos para tolerar el JSON real
 const pending = ref(false)
 const errorMsg = ref('')
 const search = ref('')
 
 const getUserId = (user: any): string => user?.id || user?._id || 'N/A'
+
+// Función auxiliar para extraer el nombre real venga en la propiedad que venga
+const getUserName = (user: any): string => user?.username || user?.name || user?.nombre || 'Sin nombre'
 
 const loadUsers = async () => {
   pending.value = true
@@ -48,22 +51,22 @@ const filteredUsers = computed(() => {
   if (!rawUsers.value) return []
   const query = search.value.toLowerCase()
   return rawUsers.value.filter((user) => {
-    const name = (user.name || '').toLowerCase()
+    const name = getUserName(user).toLowerCase() // Corrige el filtro anti-congelamiento usando el username real
     const email = (user.email || '').toLowerCase()
     return name.includes(query) || email.includes(query)
   })
 })
 
-const handleToggleRole = async (user: User) => {
+const handleToggleRole = async (user: any) => {
   try {
-    await updateUserRoleUseCase.execute(getUserId(user), user.role)
+    await updateUserRoleUseCase.execute(getUserId(user), user.role || 'client')
     await loadUsers() 
   } catch (err: any) {
     alert(err.message || 'Error al cambiar el rol.')
   }
 }
 
-const handleDeleteUser = async (user: User) => {
+const handleDeleteUser = async (user: any) => {
   if (confirm('⚠️ ¿Seguro que deseas eliminar a este usuario?')) {
     try {
       await deleteUserUseCase.execute(getUserId(user))
@@ -74,7 +77,7 @@ const handleDeleteUser = async (user: User) => {
   }
 }
 
-const items = (row: User) => [
+const items = (row: any) => [
   [{
     label: row.role === 'admin' ? 'Quitar Administrador' : 'Hacer Administrador',
     icon: 'i-heroicons-shield-check',
@@ -110,13 +113,13 @@ const items = (row: User) => [
       <UTable :columns="columns" :rows="filteredUsers" :loading="pending">
         <template #avatar-data="{ row }">
           <div class="flex items-center gap-3">
-            <UAvatar :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(row.name || 'U')}`" size="sm" />
-            <span class="text-xs font-mono text-gray-500 break-all w-24">{{ getUserId(row) }}</span>
+            <UAvatar :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(getUserName(row))}`" size="sm" />
+            <span class="text-xs font-mono text-gray-500 whitespace-nowrap">{{ getUserId(row) }}</span>
           </div>
         </template>
 
         <template #name-data="{ row }">
-          <span class="font-semibold">{{ row.name || 'Sin nombre' }}</span>
+          <span class="font-semibold text-gray-900 dark:text-white">{{ getUserName(row) }}</span>
         </template>
 
         <template #email-data="{ row }">
