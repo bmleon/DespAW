@@ -31,7 +31,7 @@ export default defineNuxtConfig({
     public: {
       // SOLUCIÓN: Ponemos la URL "a fuego" aquí. 
       // Así nos aseguramos de que siempre apunte al Gateway de Kubernetes (30090).
-      apiBase: 'http://ukiyocazorla.es'
+      apiBase: 'https://ukiyocazorla.es'
     }
   }
 })
