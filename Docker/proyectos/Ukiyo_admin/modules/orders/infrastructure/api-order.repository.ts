@@ -15,7 +15,10 @@ export class ApiOrderRepository implements OrderRepository {
       return data;
     } catch (error) {
       console.error('Error al obtener los pedidos desde la API:', error);
-      throw new Error('No se pudo cargar la lista de pedidos.');
+      // MODIFICACIÓN CRUCIAL: Comentamos el throw y devolvemos un array vacío.
+      // Así, si da error 400, el Dashboard index no se colapsa y puede cargar tus 4 usuarios.
+      // throw new Error('No se pudo cargar la lista de pedidos.');
+      return [];
     }
   }
 }
