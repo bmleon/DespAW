@@ -16,32 +16,39 @@ jobs:
     steps:
       - name: Descargar código
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      # LOGIN DOCKER HUB
+      - name: Get Git Short SHA
+        id: vars
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
       - name: Login Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # BUILD
       - name: Construir imagen Docker
         run: |
-          docker build -t bmleon/webcliente:latest -f deploy/Dockerfile .
+          docker build -t bmleon/webcliente:${{ steps.vars.outputs.sha_short }} -t bmleon/webcliente:latest -f deploy/Dockerfile .
 
-      # PUSH
       - name: Subir imagen Docker Hub
         run: |
+          docker push bmleon/webcliente:${{ steps.vars.outputs.sha_short }}
           docker push bmleon/webcliente:latest
 
-      # SSH A TU VPS
-      - name: Desplegar en VPS
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          password: ${{ secrets.VPS_PASSWORD }}
-          port: 22535
-          script: |
-            docker pull bmleon/webcliente:latest
-            microk8s kubectl rollout restart deployment nuxt-web-cliente -n web-cliente
+      # Modificamos tu archivo real deploy-webcliente.yml respetando las comillas
+      - name: Actualizar Kubernetes Deployment YAML
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
+          
+          # Reemplaza la imagen mutando el tag al nuevo SHA corto dentro de las comillas
+          sed -i 's|image: "bmleon/webcliente:.*"|image: "bmleon/webcliente:${{ steps.vars.outputs.sha_short }}"|g' deploy/kubernetes/deploy-webcliente.yml
+          
+          # Volvemos a la raíz del repositorio para subir el archivo modificado a GitHub
+          cd ../../../
+          git add Docker/proyectos/web_ukiyo_nuxt/deploy/kubernetes/deploy-webcliente.yml
+          git commit -m "chore(deploy): update frontend image tag to ${{ steps.vars.outputs.sha_short }} [skip ci]"
+          git push origin master
