@@ -9,7 +9,6 @@ export class ApiMenuRepository implements MenuRepository {
 
   async obtenerCarta(): Promise<Plato[]> {
     try {
-      // Atacamos al endpoint correcto donde se guardan los productos
       const response = await fetch(`${this.getBaseUrl()}/productos`);
       
       if (!response.ok) throw new Error('Error al obtener la carta desde el servidor');
@@ -18,10 +17,17 @@ export class ApiMenuRepository implements MenuRepository {
 
       if (!Array.isArray(data)) return [];
 
-      // Mapeamos duplicando los campos en español e inglés para que
-      // sea 100% compatible con lo que pida vuestro HTML (.toFixed)
+      // Dominio oficial de la tienda donde SÍ existe la carpeta public/comida
+      const dominioTienda = 'https://tienda.ukiyocazorla.es';
+
       return data.map((item: any) => {
         const precioNumerico = Number(item.precio) || 0;
+        
+        // 🌟 Si la descripción empieza por /comida, le añadimos el dominio de la tienda delante
+        const rutaDescripcion = item.descripcion || '';
+        const urlImagenCorregida = rutaDescripcion.startsWith('/') 
+          ? `${dominioTienda}${rutaDescripcion}`
+          : rutaDescripcion;
         
         return {
           id: item.id ? String(item.id) : '',
@@ -31,8 +37,9 @@ export class ApiMenuRepository implements MenuRepository {
           precio: precioNumerico,
           price: precioNumerico,
           
-          descripcion: item.descripcion || 'Sin descripción',
-          description: item.descripcion || 'Sin descripción',
+          // Le pasamos la URL completa apuntando a la tienda para que no falle
+          descripcion: urlImagenCorregida,
+          description: urlImagenCorregida,
           
           categoria: item.categoria || 'entrantes',
           category: item.categoria || 'entrantes',
@@ -48,4 +55,3 @@ export class ApiMenuRepository implements MenuRepository {
     }
   }
 }
-// Este repositorio se encarga de obtener la carta desde el endpoint de productos
