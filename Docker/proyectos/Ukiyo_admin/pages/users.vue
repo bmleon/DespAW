@@ -107,41 +107,40 @@ const items = (row: User) => [
         <UInput v-model="search" icon="i-heroicons-magnifying-glass" placeholder="Buscar..." class="w-full" />
       </div>
 
-      <div class="w-full overflow-x-auto block">
+      <div class="contenedor-tabla-responsive">
         
         <UTable 
           :columns="columns" 
           :rows="filteredUsers" 
-          :loading="pending" 
-          style="min-width: 850px;"
-          :ui="{ wrapper: 'overflow-x-auto', base: 'w-full table-auto' }"
+          :loading="pending"
+          class="tabla-forzada"
         >
           
           <template #avatar-data="{ row }">
-            <div class="flex items-center gap-3 py-2 min-w-[180px]">
+            <div class="flex items-center gap-3 py-2 celda-id">
               <UAvatar :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(row.name || 'U')}`" size="sm" />
-              <span class="text-xs font-mono text-gray-500 block select-all truncate">{{ getUserId(row) }}</span>
+              <span class="text-xs font-mono text-gray-500 block select-all">{{ getUserId(row) }}</span>
             </div>
           </template>
 
           <template #name-data="{ row }">
-            <span class="font-semibold text-gray-900 dark:text-white whitespace-nowrap block min-w-[140px]">{{ row.name || 'Sin nombre' }}</span>
+            <span class="font-semibold text-gray-900 dark:text-white celda-texto">{{ row.name || 'Sin nombre' }}</span>
           </template>
 
           <template #email-data="{ row }">
-            <span class="text-gray-600 dark:text-gray-300 whitespace-nowrap block min-w-[200px]">{{ row.email || 'N/A' }}</span>
+            <span class="text-gray-600 dark:text-gray-300 celda-texto">{{ row.email || 'N/A' }}</span>
           </template>
 
           <template #role-data="{ row }">
-            <div class="min-w-[100px]">
+            <span class="celda-rol">
               <UBadge :color="row.role === 'admin' ? 'red' : 'green'" variant="subtle" size="xs" class="capitalize">
                 {{ row.role === 'admin' ? 'Admin' : 'Cliente' }}
               </UBadge>
-            </div>
+            </span>
           </template>
 
           <template #actions-data="{ row }">
-            <div class="min-w-[50px] text-center">
+            <div class="celda-acciones">
               <UDropdown :items="items(row)">
                 <UButton color="gray" variant="ghost" icon="i-heroicons-ellipsis-horizontal" />
               </UDropdown>
@@ -153,3 +152,39 @@ const items = (row: User) => [
     </UCard>
   </div>
 </template>
+
+<style scoped>
+.contenedor-tabla-responsive {
+  width: 100%;
+  overflow-x: auto !important;
+  display: block;
+  -webkit-overflow-scrolling: touch; /* Suavidad de scroll en iPhones/iOS */
+}
+
+.tabla-forzada {
+  min-width: 850px !important; /* Obliga a la tabla a medir 850px como mínimo */
+  width: 100%;
+  table-layout: auto !important; /* Deja que las columnas se auto-ajusten */
+}
+
+.celda-id {
+  min-width: 220px !important;
+  white-space: nowrap !important;
+}
+
+.celda-texto {
+  min-width: 160px !important;
+  white-space: nowrap !important;
+  display: inline-block;
+}
+
+.celda-rol {
+  min-width: 100px !important;
+  display: inline-block;
+}
+
+.celda-acciones {
+  min-width: 60px !important;
+  text-align: center;
+}
+</style>
