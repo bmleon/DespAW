@@ -48,3 +48,4 @@ export class ApiMenuRepository implements MenuRepository {
     }
   }
 }
+// Este repositorio se encarga de obtener la carta desde el endpoint de productos
