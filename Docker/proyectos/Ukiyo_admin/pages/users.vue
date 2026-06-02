@@ -6,7 +6,7 @@ import { UpdateUserRoleUseCase } from '~/modules/users/application/update-user-r
 import { DeleteUserUseCase } from '~/modules/users/application/delete-user.usecase'
 import type { User } from '~/modules/users/domain/user.model'
 
-// Configuración de columnas limpia
+// Configuración de columnas limpia y sincronizada con el modelo nativo
 const columns = [
   { key: 'avatar', label: 'Usuario' },
   { key: 'name', label: 'Nombre', sortable: true },
@@ -91,108 +91,140 @@ const items = (row: User) => [
 </script>
 
 <template>
-  <div class="w-full block">
-    <div class="flex flex-col sm:flex-row justify-between items-start mb-6 gap-4">
+  <div class="px-4 py-6 md:px-6">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
       <div>
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Gestión de Usuarios</h1>
+        <p class="text-gray-500 text-sm">Administra las cuentas registradas en la plataforma.</p>
       </div>
-      <UButton icon="i-heroicons-arrow-path" color="gray" variant="ghost" :loading="pending" @click="loadUsers">
-        Recargar Lista
-      </UButton>
     </div>
 
-    <UAlert v-if="errorMsg" title="Error" :description="errorMsg" color="red" variant="soft" class="mb-6" />
+    <UAlert 
+      v-if="errorMsg"
+      title="Error"
+      :description="errorMsg"
+      color="red"
+      variant="soft"
+      icon="i-heroicons-exclamation-triangle"
+      class="mb-6"
+    />
 
-    <UCard :ui="{ body: { padding: 'p-0' } }" class="w-full overflow-hidden">
-      <div class="p-4 border-b border-gray-200 dark:border-gray-700">
-        <UInput v-model="search" icon="i-heroicons-magnifying-glass" placeholder="Buscar..." class="w-full" />
+    <UCard :ui="{ body: { padding: 'p-0 sm:p-0' } }" class="overflow-hidden">
+      <div class="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
+        <UInput 
+          v-model="search" 
+          icon="i-heroicons-magnifying-glass" 
+          placeholder="Buscar por nombre o email..." 
+          class="w-full"
+        />
       </div>
 
-      <div class="scroller-externo-tabla">
-        <div class="bloque-tabla-estirado">
-          
-          <UTable 
-            :columns="columns" 
-            :rows="filteredUsers" 
-            :loading="pending"
-            :ui="{ 
-              wrapper: 'overflow-visible', 
-              base: 'w-full table-fixed' 
-            }"
-          >
+      <div v-if="!pending && filteredUsers.length > 0" class="block md:hidden divide-y divide-gray-100 dark:divide-gray-800">
+        <div 
+          v-for="user in filteredUsers" 
+          :key="user.id" 
+          class="p-4 flex flex-col gap-3 bg-white dark:bg-ukiyo-nav"
+        >
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400">
+                <UIcon name="i-heroicons-user-circle" class="w-7 h-7" />
+              </div>
+              <div>
+                <h3 class="font-bold text-gray-900 dark:text-white text-base">{{ user.name || 'Sin nombre' }}</h3>
+                <span class="text-xs font-mono text-gray-400 block mt-0.5">ID: {{ user.id }}</span>
+              </div>
+            </div>
             
-            <template #avatar-data="{ row }">
-              <div class="flex items-center gap-3 py-2 dynamic-cell-width">
-                <UAvatar :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(row.name || 'U')}`" size="sm" class="flex-shrink-0" />
-                <span class="text-xs font-mono text-gray-500 block select-all truncate max-w-[140px]">{{ getUserId(row) }}</span>
-              </div>
-            </template>
+            <ClientOnly>
+              <UDropdown :items="items(user)">
+                <UButton color="gray" variant="ghost" icon="i-heroicons-ellipsis-horizontal-20-solid" />
+              </UDropdown>
+            </ClientOnly>
+          </div>
 
-            <template #name-data="{ row }">
-              <span class="font-semibold text-gray-900 dark:text-white block truncate max-w-[130px]">{{ row.name || 'Sin nombre' }}</span>
-            </template>
-
-            <template #email-data="{ row }">
-              <span class="text-gray-600 dark:text-gray-300 block truncate max-w-[180px]">{{ row.email || 'N/A' }}</span>
-            </template>
-
-            <template #role-data="{ row }">
-              <span class="block max-w-[90px]">
-                <UBadge :color="row.role === 'admin' ? 'red' : 'green'" variant="subtle" size="xs" class="capitalize">
-                  {{ row.role === 'admin' ? 'Admin' : 'Cliente' }}
+          <div class="grid grid-cols-2 gap-2 pt-2 border-t border-gray-50 dark:border-gray-800/50 text-xs">
+            <div>
+              <span class="text-gray-400 block font-medium uppercase tracking-wider mb-0.5">Email</span>
+              <span class="text-gray-700 dark:text-gray-300 break-all">{{ user.email }}</span>
+            </div>
+            <div class="text-right">
+              <span class="text-gray-400 block font-medium uppercase tracking-wider mb-0.5">Rol</span>
+              <div class="flex justify-end mt-0.5">
+                <UBadge 
+                  :color="user.role === 'admin' ? 'red' : 'blue'" 
+                  variant="subtle" 
+                  size="xs"
+                  class="uppercase font-bold"
+                >
+                  {{ user.role || 'client' }}
                 </UBadge>
-              </span>
-            </template>
-
-            <template #actions-data="{ row }">
-              <div class="w-10 text-center">
-                <UDropdown :items="items(row)">
-                  <UButton color="gray" variant="ghost" icon="i-heroicons-ellipsis-horizontal" />
-                </UDropdown>
               </div>
-            </template>
-
-          </UTable>
-          
+            </div>
+          </div>
         </div>
+      </div>
+
+      <div class="hidden md:block">
+        <UTable 
+          :columns="columns" 
+          :rows="filteredUsers" 
+          :loading="pending"
+          class="w-full"
+        >
+          <template #avatar-data="{ row }">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400">
+                <UIcon name="i-heroicons-user-circle" class="w-6 h-6" />
+              </div>
+              <span class="font-mono text-xs text-gray-400">ID: {{ row.id }}</span>
+            </div>
+          </template>
+
+          <template #name-data="{ row }">
+            <span class="font-bold text-gray-900 dark:text-white text-sm">{{ row.name || 'Sin nombre' }}</span>
+          </template>
+
+          <template #email-data="{ row }">
+            <span class="text-sm text-gray-600 dark:text-gray-400">{{ row.email }}</span>
+          </template>
+
+          <template #role-data="{ row }">
+            <UBadge :color="row.role === 'admin' ? 'red' : 'blue'" variant="subtle" size="xs" class="uppercase font-bold">
+              {{ row.role || 'client' }}
+            </UBadge>
+          </template>
+
+          <template #actions-data="{ row }">
+            <ClientOnly>
+              <UDropdown :items="items(row)">
+                <UButton color="gray" variant="ghost" icon="i-heroicons-ellipsis-horizontal-20-solid" />
+              </UDropdown>
+              <template #fallback>
+                <UButton color="gray" variant="ghost" icon="i-heroicons-ellipsis-horizontal-20-solid" disabled class="opacity-50" />
+              </template>
+            </ClientOnly>
+          </template>
+        </UTable>
+      </div>
+
+      <div v-if="!pending && filteredUsers.length === 0" class="text-center py-12 text-gray-400 italic text-sm">
+        No se han encontrado usuarios que coincidan con la búsqueda.
       </div>
     </UCard>
   </div>
 </template>
 
 <style scoped>
-/* 3. 🌟 FUERZA BRUTA CSS PARA EL SCROLL */
-.scroller-externo-tabla {
-  width: 100% !important;
-  max-width: 100% !important;
-  overflow-x: auto !important; /* Fuerza la aparición de la barra de scroll en el div de fuera */
-  display: block !important;
-  clear: both;
-}
-
-.bloque-tabla-estirado {
-  width: 900px !important;       /* Fuerza a que el contenido mida 900px reales, sin importar la pantalla */
-  min-width: 900px !important;
-  display: block !important;
-}
-
-/* 4. Desactivamos de raíz cualquier posicionamiento estático/fijo/sticky rebelde de Nuxt UI */
+/* Optimizaciones generales de visualización de tablas limpias */
 :deep(table) {
   table-layout: fixed !important;
   width: 100% !important;
 }
 
 :deep(th), :deep(td) {
-  position: static !important;  /* Rompe el sticky inyectado por JS a nivel de celda */
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   white-space: nowrap !important;
-  padding: 0.75rem 1rem !important;
-}
-
-.dynamic-cell-width {
-  display: flex;
-  align-items: center;
-  width: 100%;
 }
 </style>

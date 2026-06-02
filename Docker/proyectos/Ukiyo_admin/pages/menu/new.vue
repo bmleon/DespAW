@@ -5,11 +5,10 @@ import type { Product } from '~/modules/products/domain/product.model'
 
 const productRepository = new ApiProductRepository()
 
-// Estados del formulario
+// Estados del formulario - 🌟 Ahora inicializamos con el objeto completo para que Nuxt UI no se líe
 const name = ref('')
 const price = ref(0)
-const selectedCategory = ref('entrantes')
-const extensionImagen = ref('.jpg') // Extensión por defecto
+const extensionImagen = ref('.jpg')
 
 const isLoading = ref(false)
 const errorMsg = ref('')
@@ -31,6 +30,9 @@ const categories = [
   { label: 'Suplementos', value: 'suplementos' }
 ]
 
+// Estado reactivo que guarda el objeto seleccionado del menú
+const selectedCategory = ref(categories[0])
+
 const handleGuardarPlato = async () => {
   if (!name.value || price.value < 0) {
     errorMsg.value = 'Por favor, rellena los campos obligatorios.'
@@ -41,28 +43,30 @@ const handleGuardarPlato = async () => {
   errorMsg.value = ''
   successMsg.value = ''
 
-  // 🌟 AUTOMATIZACIÓN DE LA RUTA:
-  // Convertimos "Dragon Roll" en "dragon-roll" para que coincida con tu archivo
+  // AUTOMATIZACIÓN DE LA RUTA:
   const nombreNormalizado = name.value
     .toLowerCase()
     .trim()
-    .replace(/\s+/g, '-') // Reemplaza espacios por guiones
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Quita tildes por seguridad
+    .replace(/\s+/g, '-') 
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
 
-  // Construimos la ruta apuntando de forma exacta a vuestra carpeta /comida
   const rutaImagenFinal = `/comida/${nombreNormalizado}${extensionImagen.value}`
 
   try {
-    // Creamos el objeto con la ruta limpia en formato texto plano
+    // 🌟 NORMALIZACIÓN DE CATEGORÍA: 
+    // Sacamos el valor en minúsculas ('entrantes') y le ponemos la primera en Mayúscula ('Entrantes')
+    // por si vuestro backend es Case-Sensitive (sensible a mayúsculas).
+    const valorCategoria = selectedCategory.value.value;
+    const categoriaFormateada = valorCategoria.charAt(0).toUpperCase() + valorCategoria.slice(1);
+
     const nuevoProducto: Product = {
       name: name.value,
       price: Number(price.value),
       description: rutaImagenFinal, 
-      category: selectedCategory.value,
+      category: categoriaFormateada, // 👈 Enviamos 'Entrantes' impecable
       available: true
     }
 
-    // Enviamos el JSON limpio al Gateway (ya no dará error de rechazo)
     await productRepository.create(nuevoProducto)
 
     successMsg.value = '¡Plato gastronómico creado con éxito en Ukiyo!'
@@ -104,7 +108,6 @@ const handleGuardarPlato = async () => {
             <USelectMenu 
               v-model="selectedCategory" 
               :options="categories" 
-              value-attribute="value"
               option-attribute="label"
               placeholder="Selecciona la categoría"
               searchable

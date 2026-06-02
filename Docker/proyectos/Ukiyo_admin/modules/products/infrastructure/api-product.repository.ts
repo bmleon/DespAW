@@ -39,7 +39,7 @@ export class ApiProductRepository implements ProductRepository {
         nombre: product.name,
         precio: Number(product.price),
         descripcion: product.description || 'Sin descripción',
-        categoria: product.category, // 👈 ¡CRÍTICO! Esto faltaba y por eso el back guardaba "Sushi"
+        categoria: product.category, // 👈 ¡Imprescindible que envíe esta clave exacta!
         disponible: product.available !== false
       };
 
