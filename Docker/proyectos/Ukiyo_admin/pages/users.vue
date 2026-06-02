@@ -6,12 +6,13 @@ import { UpdateUserRoleUseCase } from '~/modules/users/application/update-user-r
 import { DeleteUserUseCase } from '~/modules/users/application/delete-user.usecase'
 import type { User } from '~/modules/users/domain/user.model'
 
+// 🌟 CAMBIO 1: Definimos el ancho de las columnas directamente en la configuración de Nuxt UI
 const columns = [
-  { key: 'avatar', label: 'Usuario' },
-  { key: 'name', label: 'Nombre', sortable: true },
-  { key: 'email', label: 'Email', sortable: true },
-  { key: 'role', label: 'Rol', sortable: true },
-  { key: 'actions', label: 'Acciones' }
+  { key: 'avatar', label: 'Usuario', class: 'w-[240px] min-w-[240px]' },
+  { key: 'name', label: 'Nombre', sortable: true, class: 'w-[160px] min-w-[160px]' },
+  { key: 'email', label: 'Email', sortable: true, class: 'w-[220px] min-w-[220px]' },
+  { key: 'role', label: 'Rol', sortable: true, class: 'w-[120px] min-w-[120px]' },
+  { key: 'actions', label: 'Acciones', class: 'w-[80px] min-w-[80px]' }
 ]
 
 const userRepository = new ApiUserRepository()
@@ -114,28 +115,25 @@ const items = (row: User) => [
           :rows="filteredUsers" 
           :loading="pending"
           :ui="{ 
-            wrapper: 'overflow-x-auto', 
-            base: 'min-w-[900px] w-full table-fixed' 
+            wrapper: 'overflow-x-visible', 
+            base: 'w-full table-fixed border-collapse' 
           }"
+          class="tabla-scroll-total"
         >
           
           <template #avatar-data="{ row }">
-            <div class="flex items-center gap-3 py-2 w-[220px] max-w-[220px]">
+            <div class="flex items-center gap-3 py-2 w-[220px]">
               <UAvatar :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(row.name || 'U')}`" size="sm" class="flex-shrink-0" />
               <span class="text-xs font-mono text-gray-500 truncate block select-all">{{ getUserId(row) }}</span>
             </div>
           </template>
 
           <template #name-data="{ row }">
-            <div class="w-[150px] max-w-[150px] truncate">
-              <span class="font-semibold text-gray-900 dark:text-white block truncate">{{ row.name || 'Sin nombre' }}</span>
-            </div>
+            <span class="font-semibold text-gray-900 dark:text-white block truncate w-[140px]">{{ row.name || 'Sin nombre' }}</span>
           </template>
 
           <template #email-data="{ row }">
-            <div class="w-[220px] max-w-[220px] truncate">
-              <span class="text-gray-600 dark:text-gray-300 block truncate">{{ row.email || 'N/A' }}</span>
-            </div>
+            <span class="text-gray-600 dark:text-gray-300 block truncate w-[200px]">{{ row.email || 'N/A' }}</span>
           </template>
 
           <template #role-data="{ row }">
@@ -147,7 +145,7 @@ const items = (row: User) => [
           </template>
 
           <template #actions-data="{ row }">
-            <div class="w-[60px] text-center">
+            <div class="w-[50px] text-center">
               <UDropdown :items="items(row)">
                 <UButton color="gray" variant="ghost" icon="i-heroicons-ellipsis-horizontal" />
               </UDropdown>
@@ -161,14 +159,21 @@ const items = (row: User) => [
 </template>
 
 <style scoped>
-/* Nos aseguramos de que Nuxt UI mantenga la estructura de celdas fijas rígidas */
+/* 🌟 CAMBIO 3: Destruimos CUALQUIER propiedad sticky oculta que traiga Nuxt UI */
+.tabla-scroll-total {
+  min-width: 820px !important; /* Forzamos el ancho horizontal mínimo en píxeles */
+}
+
 :deep(table) {
   table-layout: fixed !important;
+  width: 100% !important;
 }
+
 :deep(th), :deep(td) {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  position: static !important; /* 👈 Esto anula por completo el 'sticky' o 'sticky-left' interno */
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
   padding: 0.75rem 1rem !important;
 }
 </style>
