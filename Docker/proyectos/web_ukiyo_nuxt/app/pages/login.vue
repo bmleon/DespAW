@@ -27,7 +27,7 @@ const isLoading = ref(false);
 const errorMessage = ref('');
 const successMessage = ref('');
 
-// URL de producción con HTTPS para evitar bloqueos de contenido mixto
+// URL oficial de producción con HTTPS
 const API_URL = 'https://ukiyocazorla.es/api';
 
 const toggleAuth = () => {
@@ -42,19 +42,28 @@ const handleSubmit = async () => {
   successMessage.value = '';
 
   try {
+    // 🌟 DETECTOR INTELIGENTE: ¿Es un correo electrónico o un nombre de usuario?
+    const esEmail = identificador.value.includes('@');
+    
+    // Construimos el cuerpo del mensaje dinámicamente según lo que haya escrito el usuario
+    const loginBody: Record<string, string> = {
+      password: password.value
+    };
+
+    if (esEmail) {
+      loginBody.email = identificador.value; // Si tiene '@', va solo como email
+    } else {
+      loginBody.username = identificador.value; // Si no tiene '@', va solo como username
+    }
+
     if (isLogin.value) {
       // ==========================================
       // FLUJO 1: INICIAR SESIÓN MANUAL
       // ==========================================
-      // Enviamos email y username duplicados para reventar cualquier validador estricto del Back
       const response = await $fetch<AuthResponse>(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: { 
-          email: identificador.value, 
-          username: identificador.value, 
-          password: password.value 
-        }
+        body: loginBody
       });
 
       if (response?.access_token) {
@@ -81,16 +90,12 @@ const handleSubmit = async () => {
         }
       });
 
-      // PASO 2: Auto-Login automático blindado (evita el BadRequestException)
+      // PASO 2: Auto-Login automático usando el detector inteligente
       try {
         const loginResponse = await $fetch<AuthResponse>(`${API_URL}/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: { 
-            email: identificador.value,
-            username: identificador.value, 
-            password: password.value 
-          }
+          body: loginBody
         });
 
         const token = loginResponse.access_token;
@@ -115,8 +120,6 @@ const handleSubmit = async () => {
         setTimeout(async () => { await navigateTo('/'); }, 1500);
 
       } catch (autoLoginError) {
-        // Red de seguridad: si el auto-login falla por cualquier otra cosa,
-        // no rompemos la experiencia, le mandamos a loguearse a mano ya que la cuenta existe
         successMessage.value = '¡Cuenta creada con éxito! Por favor, inicia sesión.';
         isLogin.value = true;
         password.value = '';
@@ -128,7 +131,6 @@ const handleSubmit = async () => {
     let msg = error.data?.message || 'Error al procesar la solicitud.';
     if (Array.isArray(msg)) msg = msg.join(', ');
 
-    // Tu traductor de errores de Prisma impecable
     if (typeof msg === 'string' && msg.includes('UniqueConstraintViolation')) {
       msg = 'Ese correo electrónico ya está registrado. Por favor, inicia sesión.';
     }
@@ -159,8 +161,8 @@ const handleSubmit = async () => {
           </div>
 
           <div>
-            <label class="block text-xs font-bold uppercase text-gray-400 mb-2">Email</label>
-            <input v-model="identificador" type="email" required class="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-800 border-transparent focus:ring-2 focus:ring-ukiyo-gold outline-none text-gray-900 dark:text-white transition-all" />
+            <label class="block text-xs font-bold uppercase text-gray-400 mb-2">Email o Usuario</label>
+            <input v-model="identificador" type="text" required class="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-800 border-transparent focus:ring-2 focus:ring-ukiyo-gold outline-none text-gray-900 dark:text-white transition-all" />
           </div>
 
           <div>
@@ -188,6 +190,7 @@ const handleSubmit = async () => {
             {{ isLogin ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Inicia sesión' }}
           </button>
         </form>
+
       </div>
     </div>
   </div>
