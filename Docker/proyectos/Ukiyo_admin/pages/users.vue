@@ -90,7 +90,7 @@ const items = (row: User) => [
 </script>
 
 <template>
-  <div>
+  <div class="w-full min-w-0 block">
     <div class="flex flex-col sm:flex-row justify-between items-start mb-6 gap-4">
       <div>
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Gestión de Usuarios</h1>
@@ -102,37 +102,40 @@ const items = (row: User) => [
 
     <UAlert v-if="errorMsg" title="Error" :description="errorMsg" color="red" variant="soft" class="mb-6" />
 
-    <UCard :ui="{ body: { padding: 'p-0' } }">
+    <UCard :ui="{ body: { padding: 'p-0' } }" class="w-full min-w-0 overflow-hidden">
       <div class="p-4 border-b border-gray-200 dark:border-gray-700">
         <UInput v-model="search" icon="i-heroicons-magnifying-glass" placeholder="Buscar..." class="w-full" />
       </div>
 
-      <div class="contenedor-tabla-responsive">
+      <div class="w-full overflow-x-auto block">
         
         <UTable 
           :columns="columns" 
           :rows="filteredUsers" 
           :loading="pending"
-          class="tabla-forzada"
+          :ui="{ 
+            wrapper: 'overflow-x-auto', 
+            base: 'min-w-[850px] w-full table-auto' 
+          }"
         >
           
           <template #avatar-data="{ row }">
-            <div class="flex items-center gap-3 py-2 celda-id">
+            <div class="flex items-center gap-3 py-2">
               <UAvatar :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(row.name || 'U')}`" size="sm" />
-              <span class="text-xs font-mono text-gray-500 block select-all">{{ getUserId(row) }}</span>
+              <span class="text-xs font-mono text-gray-500 block select-all whitespace-nowrap">{{ getUserId(row) }}</span>
             </div>
           </template>
 
           <template #name-data="{ row }">
-            <span class="font-semibold text-gray-900 dark:text-white celda-texto">{{ row.name || 'Sin nombre' }}</span>
+            <span class="font-semibold text-gray-900 dark:text-white whitespace-nowrap">{{ row.name || 'Sin nombre' }}</span>
           </template>
 
           <template #email-data="{ row }">
-            <span class="text-gray-600 dark:text-gray-300 celda-texto">{{ row.email || 'N/A' }}</span>
+            <span class="text-gray-600 dark:text-gray-300 whitespace-nowrap">{{ row.email || 'N/A' }}</span>
           </template>
 
           <template #role-data="{ row }">
-            <span class="celda-rol">
+            <span class="whitespace-nowrap">
               <UBadge :color="row.role === 'admin' ? 'red' : 'green'" variant="subtle" size="xs" class="capitalize">
                 {{ row.role === 'admin' ? 'Admin' : 'Cliente' }}
               </UBadge>
@@ -140,7 +143,7 @@ const items = (row: User) => [
           </template>
 
           <template #actions-data="{ row }">
-            <div class="celda-acciones">
+            <div class="w-10 text-center">
               <UDropdown :items="items(row)">
                 <UButton color="gray" variant="ghost" icon="i-heroicons-ellipsis-horizontal" />
               </UDropdown>
@@ -154,37 +157,10 @@ const items = (row: User) => [
 </template>
 
 <style scoped>
-.contenedor-tabla-responsive {
-  width: 100%;
-  overflow-x: auto !important;
-  display: block;
-  -webkit-overflow-scrolling: touch; /* Suavidad de scroll en iPhones/iOS */
-}
-
-.tabla-forzada {
-  min-width: 850px !important; /* Obliga a la tabla a medir 850px como mínimo */
-  width: 100%;
-  table-layout: auto !important; /* Deja que las columnas se auto-ajusten */
-}
-
-.celda-id {
-  min-width: 220px !important;
+/* Evitamos que Nuxt UI intente reajustar o romper las celdas hacia abajo */
+:deep(th), :deep(td) {
   white-space: nowrap !important;
-}
-
-.celda-texto {
-  min-width: 160px !important;
-  white-space: nowrap !important;
-  display: inline-block;
-}
-
-.celda-rol {
-  min-width: 100px !important;
-  display: inline-block;
-}
-
-.celda-acciones {
-  min-width: 60px !important;
-  text-align: center;
+  padding-left: 1rem !important;
+  padding-right: 1rem !important;
 }
 </style>
