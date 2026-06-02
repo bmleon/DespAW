@@ -22,8 +22,7 @@ export class ApiProductRepository implements ProductRepository {
         name: item.nombre || 'Plato sin nombre',
         description: item.descripcion || '',
         price: Number(item.precio) || 0,
-        category: item.categoria || 'Sushi', // Si el back no tiene categoría, ponemos 'Sushi' por defecto
-        image: item.descripcion?.startsWith('http') ? item.descripcion : undefined, // Opcional: extrae la foto si es URL
+        category: item.categoria || 'entrantes', // Sincronizado por defecto en minúsculas
         available: item.disponible !== false
       }));
     } catch (error) {
@@ -35,11 +34,12 @@ export class ApiProductRepository implements ProductRepository {
   // 2. Guardar un plato nuevo (Mapea de tu interfaz Product al CreateProductoDto del back)
   async create(product: Product): Promise<Product> {
     try {
-      // Creamos el JSON plano que exige estrictamente el CreateProductoDto del backend
+      // 🌟 CORRECCIÓN: Ahora añadimos obligatoriamente el campo 'categoria' que exige el backend
       const bodyDto = {
         nombre: product.name,
         precio: Number(product.price),
         descripcion: product.description || 'Sin descripción',
+        categoria: product.category, // 👈 ¡CRÍTICO! Esto faltaba y por eso el back guardaba "Sushi"
         disponible: product.available !== false
       };
 
@@ -54,8 +54,7 @@ export class ApiProductRepository implements ProductRepository {
         name: response?.nombre || product.name,
         description: response?.descripcion || product.description,
         price: Number(response?.precio) || product.price,
-        category: product.category || 'Sushi', // Mantenemos la categoría que seleccionó el usuario
-        image: response?.descripcion?.startsWith('http') ? response.descripcion : undefined,
+        category: response?.categoria || product.category, 
         available: response?.disponible !== false
       };
     } catch (error) {
