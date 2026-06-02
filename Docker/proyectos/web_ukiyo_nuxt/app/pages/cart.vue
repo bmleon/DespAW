@@ -1,3 +1,4 @@
+<!-- app/pages/cart.vue -->
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useCartStore } from '~/stores/cart';
@@ -36,7 +37,8 @@ const formCliente = ref({
 
 onMounted(() => {
   if (authStore.isAuthenticated && authStore.user) {
-    formCliente.value.nombre = authStore.user.nombre;
+    // 🌟 CORRECCIÓN DE TYPESCRIPT: Cambiado '.nombre' por '.username' que es el tipado real
+    formCliente.value.nombre = authStore.user.username || '';
     formCliente.value.email = authStore.user.email;
   }
 });
@@ -83,7 +85,6 @@ const finalizarPedido = async () => {
       headers['Authorization'] = `Bearer ${authStore.token}`;
     }
 
-    // Usamos la variable de entorno dinámica para conectar con el Kubernetes de tu compañero
     await $fetch(`${config.public.apiBase}/api/pedidos`, {
       method: 'POST',
       headers,
@@ -95,7 +96,6 @@ const finalizarPedido = async () => {
 
   } catch (error: any) {
     console.error('Error al enviar a cocina:', error);
-    // Manejo de errores amigable
     errorMessage.value = error.data?.message || 'Hubo un error de conexión con la cocina. Por favor, inténtalo de nuevo.';
   } finally {
     isSubmitting.value = false;

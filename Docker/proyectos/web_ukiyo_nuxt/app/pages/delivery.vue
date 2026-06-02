@@ -40,24 +40,24 @@ const triggerToast = (productName: string) => {
 // --- CATEGORÍAS OFICIALES ---
 const categories = [
   { id: 'all', name: 'Todo' },
-  { id: 'Entrantes', name: 'Entrantes' },
-  { id: 'Hosomaki', name: 'Hosomaki' },
-  { id: 'Nigiris', name: 'Nigiris' },
-  { id: 'Futomakis', name: 'Futomakis' },
-  { id: 'Uramakis', name: 'Uramakis' },
-  { id: 'Novedades', name: 'Novedades!' }, 
-  { id: 'Combos', name: 'Combos' },
-  { id: 'Variados Ukiyo', name: 'Variados Ukiyo' },
-  { id: 'Pokes', name: 'Pokes' },
-  { id: 'Postres', name: 'Postres' },
-  { id: 'Bebidas', name: 'Bebidas' },
-  { id: 'Suplementos', name: 'Suplementos' },
+  { id: 'entrantes', name: 'Entrantes' },
+  { id: 'hosomaki', name: 'Hosomaki' },
+  { id: 'nigiris', name: 'Nigiris' },
+  { id: 'futomakis', name: 'Futomakis' },
+  { id: 'uramakis', name: 'Uramakis' },
+  { id: 'novedades', name: 'Novedades!' }, 
+  { id: 'combos', name: 'Combos' },
+  { id: 'variados ukiyo', name: 'Variados Ukiyo' },
+  { id: 'pokes', name: 'Pokes' },
+  { id: 'postres', name: 'Postres' },
+  { id: 'bebidas', name: 'Bebidas' },
+  { id: 'suplementos', name: 'Suplementos' },
 ];
 
 // --- LÓGICA DE FILTRADO ---
 const filteredProducts = computed(() => {
   if (selectedCategory.value === 'all') return menuItems.value;
-  return menuItems.value.filter(p => p.categoria === selectedCategory.value);
+  return menuItems.value.filter(p => p.categoria?.toLowerCase() === selectedCategory.value.toLowerCase());
 });
 
 // --- FUNCIÓN PARA AÑADIR AL CARRITO ---
@@ -66,7 +66,7 @@ const addToCart = (product: Plato) => {
     id: product.id,
     name: product.nombre,
     price: product.precio,
-    image: product.imagen ? `/comida/${product.imagen}` : ''
+    image: product.descripcion // 🌟 Pasamos la ruta estática que viene en la descripción
   });
   triggerToast(product.nombre);
 };
@@ -134,8 +134,8 @@ const addToCart = (product: Plato) => {
         >
           <div class="relative h-56 overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
             <img 
-              v-if="product.imagen"
-              :src="`/comida/${product.imagen}`" 
+              v-if="product.descripcion"
+              :src="product.descripcion" 
               :alt="product.nombre" 
               class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
               loading="lazy" 
@@ -158,7 +158,7 @@ const addToCart = (product: Plato) => {
               {{ product.nombre }}
             </h3>
             <p class="text-gray-600 dark:text-gray-400 text-sm leading-relaxed mb-6 flex-grow line-clamp-3 italic">
-              {{ product.descripcion }}
+              Sin alérgenos - Plato fresco preparado al momento.
             </p>
             <div class="mt-auto pt-4 border-t border-gray-100 dark:border-gray-800">
                <div class="text-2xl font-black text-gray-900 dark:text-white mb-4">
@@ -169,7 +169,7 @@ const addToCart = (product: Plato) => {
                  class="w-full py-3.5 bg-ukiyo-gold text-black rounded-xl font-black uppercase tracking-widest text-xs transition-all duration-300 flex items-center justify-center gap-2 hover:bg-white hover:shadow-xl hover:-translate-y-0.5 active:scale-95"
                >
                  <span>Añadir al pedido</span>
-                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                 <svg xmlns="http://www.w3.org/2000/xl" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                </button>
             </div>
           </div>
