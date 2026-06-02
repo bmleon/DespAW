@@ -9,7 +9,7 @@ export class ApiMenuRepository implements MenuRepository {
 
   async obtenerCarta(): Promise<Plato[]> {
     try {
-      // Atacamos al endpoint correcto donde está el Edamame
+      // Atacamos al endpoint correcto donde se guardan los productos
       const response = await fetch(`${this.getBaseUrl()}/productos`);
       
       if (!response.ok) throw new Error('Error al obtener la carta desde el servidor');
@@ -18,15 +18,29 @@ export class ApiMenuRepository implements MenuRepository {
 
       if (!Array.isArray(data)) return [];
 
-      // Mapeamos el JSON en español al formato que vuestra interfaz Plato (en inglés) necesita
-      return data.map((item: any) => ({
-        id: item.id ? String(item.id) : '',
-        name: item.nombre || 'Plato sin nombre',
-        price: Number(item.precio) || 0,
-        description: item.descripcion || 'Sin descripción',
-        category: item.categoria || 'entrantes',
-        available: item.disponible !== false
-      })) as unknown as Plato[];
+      // Mapeamos duplicando los campos en español e inglés para que
+      // sea 100% compatible con lo que pida vuestro HTML (.toFixed)
+      return data.map((item: any) => {
+        const precioNumerico = Number(item.precio) || 0;
+        
+        return {
+          id: item.id ? String(item.id) : '',
+          nombre: item.nombre || 'Plato sin nombre',
+          name: item.nombre || 'Plato sin nombre',
+          
+          precio: precioNumerico,
+          price: precioNumerico,
+          
+          descripcion: item.descripcion || 'Sin descripción',
+          description: item.descripcion || 'Sin descripción',
+          
+          categoria: item.categoria || 'entrantes',
+          category: item.categoria || 'entrantes',
+          
+          disponible: item.disponible !== false,
+          available: item.disponible !== false
+        };
+      }) as unknown as Plato[];
 
     } catch (error) {
       console.error('❌ Error [ApiMenuRepository]:', error);
