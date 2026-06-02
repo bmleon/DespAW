@@ -24,7 +24,23 @@ const errorMsg = ref('')
 
 const search = ref('')
 const selectedCategory = ref('Todas')
-const categories = ['Todas', 'Sushi', 'Nigiri', 'Calientes', 'Postres', 'Bebidas']
+
+// Listado de las 12 categorías reales de Ukiyo + Opción global de filtrado
+const categories = [
+  'Todas',
+  'entrantes',
+  'niguiris',
+  'hosomakis',
+  'futomakis',
+  'uramakis',
+  'novedades!',
+  'combos',
+  'variados ukiyo',
+  'pokes',
+  'postres',
+  'bebidas',
+  'suplementos'
+]
 
 // Carga de datos aislada a través del caso de uso
 const loadDishes = async () => {
@@ -35,10 +51,8 @@ const loadDishes = async () => {
     dbDishes.value = Array.isArray(data) ? data : []
   } catch (err: any) {
     console.warn('La API devolvió un error o la base de datos está vacía:', err)
-    // CRÍTICO: Si la API falla o está vacía, forzamos un array vacío para desbloquear el estado "Cargando"
     dbDishes.value = []
   } finally {
-    // CRÍTICO: Garantiza que el spinner se detenga siempre
     pending.value = false
   }
 }
@@ -56,7 +70,12 @@ const filteredDishes = computed(() => {
     if (!dish) return false
     const name = (dish.name || '').toLowerCase()
     const matchesSearch = name.includes(query)
-    const matchesCategory = selectedCategory.value === 'Todas' || dish.category === selectedCategory.value
+    
+    // Normalizamos la comparación convirtiendo ambos a minúsculas
+    const dishCat = (dish.category || '').toLowerCase()
+    const selectedCat = selectedCategory.value.toLowerCase()
+    
+    const matchesCategory = selectedCategory.value === 'Todas' || dishCat === selectedCat
     return matchesSearch && matchesCategory
   })
 })
@@ -133,10 +152,12 @@ const items = (row: Product) => [
           placeholder="Buscar plato..." 
           class="flex-1"
         />
-        <USelect 
+        <USelectMenu 
           v-model="selectedCategory" 
           :options="categories" 
-          class="w-full md:w-48" 
+          searchable
+          searchable-placeholder="Buscar categoría..."
+          class="w-full md:w-56 capitalize" 
         />
       </div>
 
@@ -146,7 +167,6 @@ const items = (row: Product) => [
         :loading="pending"
         class="w-full overflow-x-auto"
       >
-        <!-- Estado Personalizado Completo cuando la Base de Datos está vacía -->
         <template #empty-state>
           <div class="flex flex-col items-center justify-center py-12 px-4 text-center">
             <div class="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 mb-4">
@@ -170,6 +190,10 @@ const items = (row: Product) => [
 
         <template #name-data="{ row }">
           <span class="font-bold text-gray-900 dark:text-white text-base">{{ row.name }}</span>
+        </template>
+
+        <template #category-data="{ row }">
+          <span class="capitalize text-sm text-gray-600 dark:text-gray-400">{{ row.category }}</span>
         </template>
 
         <template #price-data="{ row }">

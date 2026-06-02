@@ -8,7 +8,7 @@ const productRepository = new ApiProductRepository()
 // Estados del formulario
 const name = ref('')
 const price = ref(0)
-const selectedCategory = ref('Sushi')
+const selectedCategory = ref('entrantes') // Inicializado en minúscula para sincronía con BD
 const imagenArchivo = ref<File | null>(null)
 const imagePreview = ref('')
 
@@ -16,7 +16,21 @@ const isLoading = ref(false)
 const errorMsg = ref('')
 const successMsg = ref('')
 
-const categories = ['Sushi', 'Nigiri', 'Calientes', 'Postres', 'Bebidas']
+// 🌟 Array mapeado con las 12 categorías reales de Ukiyo para el SelectMenu profesional
+const categories = [
+  { label: 'Entrantes', value: 'entrantes' },
+  { label: 'Niguiris', value: 'niguiris' },
+  { label: 'Hosomakis', value: 'hosomakis' },
+  { label: 'Futomakis', value: 'futomakis' },
+  { label: 'Uramakis', value: 'uramakis' },
+  { label: 'Novedades!', value: 'novedades!' },
+  { label: 'Combos', value: 'combos' },
+  { label: 'Variados Ukiyo', value: 'variados ukiyo' },
+  { label: 'Pokes', value: 'pokes' },
+  { label: 'Postres', value: 'postres' },
+  { label: 'Bebidas', value: 'bebidas' },
+  { label: 'Suplementos', value: 'suplementos' }
+]
 
 // Manejar la selección de la foto y crear una previsualización rápida
 const onFileSelected = (event: Event) => {
@@ -57,16 +71,16 @@ const handleGuardarPlato = async () => {
       urlImagenFinal = imgbbResponse.data.url
     }
 
-    // Paso 2: Crear el objeto cumpliendo estrictamente con la interfaz "Product" (en inglés)
+    // Paso 2: Crear el objeto cumpliendo estrictamente con la interfaz "Product"
     const nuevoProducto: Product = {
       name: name.value,
       price: Number(price.value),
-      description: urlImagenFinal || 'Sin descripción', // Guardamos la URL en la descripción
+      description: urlImagenFinal || 'Sin descripción', // Guardamos la URL en la descripción temporalmente
       category: selectedCategory.value,
       available: true
     }
 
-    // Paso 3: Enviar al repositorio. TypeScript y el Gateway lo aceptarán perfectamente
+    // Paso 3: Enviar al repositorio
     await productRepository.create(nuevoProducto)
 
     successMsg.value = '¡Plato gastronómico creado con éxito en Ukiyo!'
@@ -105,7 +119,16 @@ const handleGuardarPlato = async () => {
           </div>
           <div>
             <label class="block text-xs font-bold uppercase text-gray-400 mb-2">Categoría</label>
-            <USelect v-model="selectedCategory" :options="categories" class="w-full" />
+            <USelectMenu 
+              v-model="selectedCategory" 
+              :options="categories" 
+              value-attribute="value"
+              option-attribute="label"
+              placeholder="Selecciona la categoría"
+              searchable
+              searchable-placeholder="Buscar categoría..."
+              class="w-full" 
+            />
           </div>
         </div>
 
