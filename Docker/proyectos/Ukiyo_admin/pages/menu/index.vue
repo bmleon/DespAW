@@ -222,3 +222,4 @@ const items = (row: Product) => [
     </UCard>
   </div>
 </template>
+//linea para crear cambios y ver resultados nuevos 
