@@ -115,35 +115,39 @@ const items = (row: User) => [
           :loading="pending"
           :ui="{ 
             wrapper: 'overflow-x-auto', 
-            base: 'min-w-[850px] w-full table-auto' 
+            base: 'min-w-[900px] w-full table-fixed' 
           }"
         >
           
           <template #avatar-data="{ row }">
-            <div class="flex items-center gap-3 py-2">
-              <UAvatar :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(row.name || 'U')}`" size="sm" />
-              <span class="text-xs font-mono text-gray-500 block select-all whitespace-nowrap">{{ getUserId(row) }}</span>
+            <div class="flex items-center gap-3 py-2 w-[220px] max-w-[220px]">
+              <UAvatar :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(row.name || 'U')}`" size="sm" class="flex-shrink-0" />
+              <span class="text-xs font-mono text-gray-500 truncate block select-all">{{ getUserId(row) }}</span>
             </div>
           </template>
 
           <template #name-data="{ row }">
-            <span class="font-semibold text-gray-900 dark:text-white whitespace-nowrap">{{ row.name || 'Sin nombre' }}</span>
+            <div class="w-[150px] max-w-[150px] truncate">
+              <span class="font-semibold text-gray-900 dark:text-white block truncate">{{ row.name || 'Sin nombre' }}</span>
+            </div>
           </template>
 
           <template #email-data="{ row }">
-            <span class="text-gray-600 dark:text-gray-300 whitespace-nowrap">{{ row.email || 'N/A' }}</span>
+            <div class="w-[220px] max-w-[220px] truncate">
+              <span class="text-gray-600 dark:text-gray-300 block truncate">{{ row.email || 'N/A' }}</span>
+            </div>
           </template>
 
           <template #role-data="{ row }">
-            <span class="whitespace-nowrap">
+            <div class="w-[100px]">
               <UBadge :color="row.role === 'admin' ? 'red' : 'green'" variant="subtle" size="xs" class="capitalize">
                 {{ row.role === 'admin' ? 'Admin' : 'Cliente' }}
               </UBadge>
-            </span>
+            </div>
           </template>
 
           <template #actions-data="{ row }">
-            <div class="w-10 text-center">
+            <div class="w-[60px] text-center">
               <UDropdown :items="items(row)">
                 <UButton color="gray" variant="ghost" icon="i-heroicons-ellipsis-horizontal" />
               </UDropdown>
@@ -157,10 +161,14 @@ const items = (row: User) => [
 </template>
 
 <style scoped>
-/* Evitamos que Nuxt UI intente reajustar o romper las celdas hacia abajo */
+/* Nos aseguramos de que Nuxt UI mantenga la estructura de celdas fijas rígidas */
+:deep(table) {
+  table-layout: fixed !important;
+}
 :deep(th), :deep(td) {
-  white-space: nowrap !important;
-  padding-left: 1rem !important;
-  padding-right: 1rem !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0.75rem 1rem !important;
 }
 </style>
