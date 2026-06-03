@@ -216,7 +216,6 @@ const items = (row: User) => [
 </template>
 
 <style scoped>
-/* Optimizaciones generales de visualización de tablas limpias */
 :deep(table) {
   table-layout: fixed !important;
   width: 100% !important;
