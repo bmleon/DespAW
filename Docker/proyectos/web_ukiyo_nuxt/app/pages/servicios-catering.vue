@@ -1,135 +1,244 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue';
 
-const name = ref('')
-const email = ref('')
-const phone = ref('')
-const guests = ref(10)
-const eventType = ref('Cumpleaños')
-const description = ref('')
+const localePath = useLocalePath();
+const { t } = useI18n();
 
-const pending = ref(false)
-const successMsg = ref('')
-const errorMsg = ref('')
+// --- ESTADOS DE CONTROL DE ENVÍO ---
+const isSubmitting = ref(false);
+const showSuccess = ref(false);
+const showError = ref(false);
 
-// Opciones para el desplegable de tipo de evento
-const eventOptions = ['Cumpleaños', 'Boda', 'Evento de Empresa', 'Aniversario', 'Otro privado']
+// 1. Fotos de catering (.jpeg)
+const cateringImages = [
+  '/catering/imagen1.jpeg',
+  '/catering/imagen2.jpeg',
+  '/catering/imagen3.jpeg',
+  '/catering/imagen4.jpeg',
+  '/catering/imagen5.jpeg'
+];
 
-const handleSolicitarCatering = async () => {
-  pending.value = true
-  successMsg.value = ''
-  errorMsg.value = ''
+const currentIndex = ref(0);
+let timer: any = null;
 
-  // REEMPLAZA ESTO: Pon aquí el ID real de letras y números que te dé Formspree
-  const FORMSPREE_ID = 'mojzapoj' 
+const nextSlide = () => {
+  currentIndex.value = (currentIndex.value + 1) % cateringImages.length;
+};
 
-  const payload = {
-    Nombre: name.value,
-    Email: email.value,
-    Telefono: phone.value,
-    Comensales: guests.value,
-    Tipo_Evento: eventType.value,
-    Detalles: description.value
-  }
+const prevSlide = () => {
+  currentIndex.value = (currentIndex.value - 1 + cateringImages.length) % cateringImages.length;
+};
+
+const startTimer = () => {
+  stopTimer();
+  timer = setInterval(nextSlide, 4500); 
+};
+
+const stopTimer = () => {
+  if (timer) clearInterval(timer);
+};
+
+const manualNav = (direction: 'next' | 'prev') => {
+  if (direction === 'next') nextSlide();
+  else prevSlide();
+  startTimer(); 
+};
+
+onMounted(() => {
+  startTimer();
+});
+
+onUnmounted(() => {
+  stopTimer();
+});
+
+// Reactivo del formulario visual
+const form = ref({
+  nombre: '',
+  email: '',
+  fecha: '',
+  invitados: '',
+  tipoEvento: 'corporate',
+  detalles: ''
+});
+
+// --- ENVÍO DE DATOS A FORMSPREE (DEMO) ---
+const submitCatering = async () => {
+  isSubmitting.value = true;
+  showError.value = false;
+  showSuccess.value = false;
 
   try {
-    await $fetch(`https://formspree.io/f/${FORMSPREE_ID}`, {
+    // IMPORTANTE: Sustituye 'TU_ID_DE_FORMSPREE' por tu código real de Formspree
+    const response = await fetch('https://formspree.io/f/mojzapoj', {
       method: 'POST',
-      body: payload
-    })
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      // Pasamos el estado de tu formulario directamente a formato JSON
+      body: JSON.stringify({
+        Nombre: form.value.nombre,
+        Email: form.value.email,
+        Fecha: form.value.fecha,
+        Invitados: Number(form.value.invitados),
+        Tipo_Evento: form.value.tipoEvento,
+        Detalles: form.value.detalles
+      })
+    });
 
-    successMsg.value = '¡Solicitud enviada con éxito! Nos pondremos en contacto contigo muy pronto para pasarte el presupuesto personalizado.'
-    
-    // Limpiamos el formulario tras el éxito para una mejor experiencia de usuario
-    name.value = ''
-    email.value = ''
-    phone.value = ''
-    guests.value = 10
-    eventType.value = 'Cumpleaños'
-    description.value = ''
-  } catch (err: any) {
-    errorMsg.value = 'Ocurrió un error al procesar tu solicitud. Por favor, inténtalo de nuevo.'
+    if (response.ok) {
+      showSuccess.value = true;
+      // Reseteamos el formulario a su estado original
+      form.value = {
+        nombre: '',
+        email: '',
+        fecha: '',
+        invitados: '',
+        tipoEvento: 'corporate',
+        detalles: ''
+      };
+      // Ocultamos la cortina de éxito tras 5 segundos
+      setTimeout(() => showSuccess.value = false, 5000);
+    } else {
+      showError.value = true;
+    }
+  } catch (error) {
+    console.error('Error enviando el formulario:', error);
+    showError.value = true;
   } finally {
-    pending.value = false
+    isSubmitting.value = false;
   }
-}
+};
 </script>
 
 <template>
-  <div class="max-w-3xl mx-auto px-4 py-12">
-    <div class="text-center mb-10">
-      <span class="text-xs font-bold tracking-widest text-red-500 uppercase">Servicios Exclusivos</span>
-      <h1 class="text-3xl font-extrabold text-gray-950 dark:text-white mt-1">Catering & Eventos Privados</h1>
-      <p class="text-gray-500 dark:text-gray-400 mt-2 max-w-lg mx-auto text-sm">
-        ¿Quieres llevar la experiencia Ukiyo a tu celebración? Cuéntanos los detalles de tu evento y diseñaremos un menú a tu medida.
-      </p>
+  <div class="pb-20 bg-white dark:bg-ukiyo-dark">
+    <div class="relative h-[60vh] flex items-center justify-center overflow-hidden">
+      <div class="absolute inset-0 z-0">
+        <img src="https://images.unsplash.com/photo-1559339352-11d035aa65de?q=80&w=1920&auto=format&fit=crop" alt="Catering Ukiyo" class="w-full h-full object-cover opacity-90 dark:opacity-60">
+        <div class="absolute inset-0 bg-gradient-to-t from-gray-50 dark:from-ukiyo-dark via-black/40 to-black/60"></div>
+      </div>
+      <div class="relative z-10 text-center px-4 mt-10">
+        <p class="text-white/90 text-sm md:text-lg uppercase tracking-[0.3em] mb-4 font-light">Experiencias Exclusivas</p>
+        <h1 class="text-5xl md:text-7xl font-black text-white mb-6 uppercase tracking-tighter"> UKIYO <span class="text-ukiyo-gold">EVENTS</span></h1>
+        <p class="text-gray-200 text-lg max-w-2xl mx-auto font-light leading-relaxed"> Más que comida, creamos atmósferas. </p>
+      </div>
     </div>
 
-    <UAlert
-      v-if="successMsg"
-      title="¡Excelente!"
-      :description="successMsg"
-      color="green"
-      variant="soft"
-      icon="i-heroicons-check-circle"
-      class="mb-6"
-    />
+    <div class="max-w-7xl mx-auto px-4 -mt-20 relative z-20 mb-20">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="service-card">
+          <div class="text-4xl mb-4 bg-ukiyo-gold/10 w-16 h-16 flex items-center justify-center rounded-full">🏢</div>
+          <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Eventos Corporativos</h3>
+          <p class="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">Impresiona a tus clientes y socios con alta cocina japonesa de nivel ejecutivo.</p>
+        </div>
+        <div class="service-card">
+          <div class="text-4xl mb-4 bg-ukiyo-gold/10 w-16 h-16 flex items-center justify-center rounded-full">💍</div>
+          <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Bodas y Celebraciones</h3>
+          <p class="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">El día más especial merece el mejor sabor. Estaciones de sushi en vivo (Showcooking).</p>
+        </div>
+        <div class="service-card">
+          <div class="text-4xl mb-4 bg-ukiyo-gold/10 w-16 h-16 flex items-center justify-center rounded-full">🎉</div>
+          <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Fiestas Privadas</h3>
+          <p class="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">Lleva la experiencia Ukiyo a tu casa con nuestras bandejas personalizadas.</p>
+        </div>
+      </div>
+    </div>
 
-    <UAlert
-      v-if="errorMsg"
-      title="Error de envío"
-      :description="errorMsg"
-      color="red"
-      variant="soft"
-      icon="i-heroicons-exclamation-triangle"
-      class="mb-6"
-    />
+    <div class="max-w-7xl mx-auto px-4 mb-24">
+      <div class="flex flex-col md:flex-row items-center gap-12">
+        <div class="w-full md:w-1/2">
+          <h2 class="text-3xl md:text-4xl font-black text-gray-900 dark:text-white mb-6 uppercase tracking-tighter"> EL ARTE DEL <span class="text-ukiyo-gold">DETALLE</span></h2>
+          <p class="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed"> Nuestras bandejas de catering no son solo comida, son piezas de arte diseñadas para impactar visualmente antes del primer bocado. </p>
+          <ul class="space-y-4 text-gray-700 dark:text-gray-400 font-medium italic">
+            <li class="flex items-center gap-2"><span class="text-ukiyo-gold text-xl">✓</span> Pescado fresco cortado el mismo día. </li>
+            <li class="flex items-center gap-2"><span class="text-ukiyo-gold text-xl">✓</span> Opciones veganas y sin gluten. </li>
+            <li class="flex items-center gap-2"><span class="text-ukiyo-gold text-xl">✓</span> Presentación minimalista japonesa. </li>
+          </ul>
+        </div>
 
-    <UCard class="shadow-xl bg-white dark:bg-ukiyo-nav border border-gray-100 dark:border-gray-800">
-      <form @submit.prevent="handleSolicitarCatering" class="space-y-6">
+        <div class="w-full md:w-1/2 flex justify-center items-center">
+          <div class="p-1.5 border-2 border-ukiyo-gold rounded-[2rem] shadow-2xl relative bg-transparent">
+            <div class="relative w-full h-[400px] sm:w-[500px] rounded-[1.8rem] overflow-hidden bg-black group border-2 border-ukiyo-gold/30">
+              <img 
+                :src="cateringImages[currentIndex]" 
+                alt="Sushi Catering Ukiyo" 
+                class="w-full h-full object-cover"
+              >
+              <div class="absolute inset-0 flex items-center justify-between px-4 z-30 pointer-events-none">
+                <button @click="manualNav('prev')" class="nav-button pointer-events-auto">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                </button>
+                <button @click="manualNav('next')" class="nav-button pointer-events-auto">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                </button>
+              </div>
+              <div class="absolute bottom-6 left-0 right-0 flex justify-center gap-2 z-30">
+                <span v-for="(_, i) in cateringImages" :key="i" 
+                  class="h-1.5 rounded-full transition-all duration-300"
+                  :class="currentIndex === i ? 'w-8 bg-ukiyo-gold' : 'w-2 bg-white/40'">
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="max-w-3xl mx-auto px-4">
+      <div class="bg-white dark:bg-ukiyo-nav rounded-2xl shadow-xl border-t-4 border-ukiyo-gold p-8 md:p-12 relative overflow-hidden">
+        <h2 class="text-3xl font-bold text-center text-gray-900 dark:text-white mb-10 uppercase tracking-tight">Solicita tu Presupuesto</h2>
         
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <UFormGroup label="Tu Nombre" required>
-            <UInput v-model="name" placeholder="Ej: Belén León" icon="i-heroicons-user" required size="md" />
-          </UFormGroup>
+        <form @submit.prevent="submitCatering" class="space-y-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <input v-model="form.nombre" type="text" placeholder="Nombre / Empresa" class="input-style" required>
+            <input v-model="form.email" type="email" placeholder="Email de contacto" class="input-style" required>
+            <input v-model="form.fecha" type="date" class="input-style" required>
+            <input v-model="form.invitados" type="number" placeholder="Nº Invitados" class="input-style" required>
+          </div>
+          <select v-model="form.tipoEvento" class="input-style">
+            <option value="corporate">Evento Corporativo</option>
+            <option value="wedding">Boda / Comunión</option>
+            <option value="birthday">Fiesta Privada</option>
+          </select>
+          <textarea v-model="form.detalles" rows="4" class="input-style" placeholder="Cuéntanos más..."></textarea>
+          
+          <p v-if="showError" class="text-xs text-red-500 font-bold uppercase tracking-tight text-center">
+            ❌ Hubo un error de formato o conexión con el servidor. Inténtalo de nuevo.
+          </p>
 
-          <UFormGroup label="Correo Electrónico" required>
-            <UInput v-model="email" type="email" placeholder="Ej: belen@example.com" icon="i-heroicons-envelope" required size="md" />
-          </UFormGroup>
-        </div>
+          <button type="submit" :disabled="isSubmitting" class="w-full py-4 bg-ukiyo-gold hover:bg-white text-black font-black uppercase tracking-widest rounded-lg transition-all shadow-lg hover:scale-[1.01] disabled:opacity-50 flex justify-center items-center">
+            <span v-if="isSubmitting">Enviando...</span>
+            <span v-else>Enviar Solicitud</span>
+          </button>
+        </form>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <UFormGroup label="Teléfono de Contacto" required>
-            <UInput v-model="phone" type="tel" placeholder="Ej: 612345678" icon="i-heroicons-phone" required size="md" />
-          </UFormGroup>
+        <transition enter-active-class="transition duration-300" enter-from-class="opacity-0 scale-95" enter-to-class="opacity-100 scale-100">
+          <div v-if="showSuccess" class="absolute inset-0 bg-white/95 dark:bg-ukiyo-nav/95 z-40 flex flex-col items-center justify-center p-8 text-center rounded-2xl border-2 border-green-500">
+            <div class="w-16 h-16 bg-green-100 dark:bg-green-900/50 rounded-full flex items-center justify-center mb-6">
+              <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            </div>
+            <h3 class="text-2xl font-black text-gray-900 dark:text-white uppercase mb-2">¡Solicitud Recibida!</h3>
+            <p class="text-gray-600 dark:text-gray-400">Hemos guardado los detalles de tu evento. Te responderemos con un presupuesto personalizado muy pronto.</p>
+          </div>
+        </transition>
 
-          <UFormGroup label="Tipo de Celebración" required>
-            <USelect v-model="eventType" :options="eventOptions" size="md" />
-          </UFormGroup>
-        </div>
-
-        <UFormGroup label="Número estimado de personas (Mínimo 10)" required>
-          <UInput v-model.number="guests" type="number" min="10" max="500" icon="i-heroicons-users" size="md" required />
-        </UFormGroup>
-
-        <UFormGroup label="Cuéntanos más detalles sobre el evento" description="Especifica si necesitas barra de sushi en vivo, alérgenos, horario o ideas que tengas.">
-          <UTextarea v-model="description" placeholder="Ej: Queremos un córner de sushi variado para una cena de empresa nocturna..." rows="4" size="md" />
-        </UFormGroup>
-
-        <div class="pt-2">
-          <UButton
-            type="submit"
-            block
-            color="red"
-            size="lg"
-            class="font-bold uppercase tracking-wider justify-center"
-            :loading="pending"
-          >
-            Solicitar Presupuesto de Catering
-          </UButton>
-        </div>
-
-      </form>
-    </UCard>
+      </div>
+    </div>
   </div>
 </template>
+
+<style scoped>
+.service-card {
+  @apply bg-white dark:bg-ukiyo-nav p-8 rounded-xl shadow-xl border border-gray-100 dark:border-gray-800 flex flex-col items-center text-center transition-all duration-300 hover:-translate-y-2;
+}
+
+.input-style {
+  @apply w-full px-4 py-3 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-ukiyo-gold outline-none;
+}
+
+.nav-button {
+  @apply w-10 h-10 rounded-full bg-black/40 backdrop-blur-sm text-white flex items-center justify-center hover:bg-ukiyo-gold hover:text-black transition-all shadow-xl;
+}
+</style>
