@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import ColorModeButton from '~/components/ColorModeButton.vue'
 
 const links = [
@@ -15,6 +15,29 @@ const links = [
 ]
 
 const isOpen = ref(false)
+
+// 🌟 ESTADOS REACTIVOS PARA EL ADMINISTRADOR DINÁMICO
+const userName = ref('Cargando...')
+const userRole = ref('Personal')
+const avatarUrl = ref('https://ui-avatars.com/api/?name=U&background=C5A059&color=fff')
+
+onMounted(() => {
+  // Recuperamos los datos de sesión generados en el login de forma dinámica
+  const sessionData = localStorage.getItem('user_session')
+  
+  if (sessionData) {
+    const session = JSON.parse(sessionData)
+    userName.value = session.profile.username
+    userRole.value = session.profile.role
+    
+    // Generamos la URL del avatar de forma dinámica pasando el nombre del admin logueado
+    const nombreCodificado = encodeURIComponent(userName.value)
+    avatarUrl.value = `https://ui-avatars.com/api/?name=${nombreCodificado}&background=C5A059&color=fff`
+  } else {
+    // Si intentan saltarse el login de forma directa, el guardián los expulsa
+    navigateTo('/login')
+  }
+})
 </script>
 
 <template>
@@ -47,14 +70,14 @@ const isOpen = ref(false)
       <div class="p-4 border-t border-gray-200 dark:border-gray-800">
         <div class="flex items-center gap-3">
           <ClientOnly>
-            <UAvatar src="https://ui-avatars.com/api/?name=Yamila+G&background=C5A059&color=fff" alt="Admin" size="sm" />
+            <UAvatar :src="avatarUrl" :alt="userName" size="sm" />
             <template #fallback>
               <div class="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-800 animate-pulse" />
             </template>
           </ClientOnly>
           <div class="text-sm">
-            <p class="font-medium text-gray-900 dark:text-white">Yamila G.</p>
-            <p class="text-xs text-gray-500 dark:text-gray-400">Propietaria</p>
+            <p class="font-medium text-gray-900 dark:text-white">{{ userName }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">{{ userRole }}</p>
           </div>
         </div>
       </div>
