@@ -18,7 +18,7 @@ const menuLinks = [
   { name: 'nav.home', path: '/' },
   { name: 'Carta', path: '/delivery' }, 
   { name: 'nav.offers', path: '/ofertas' },
-  { name: 'nav.catering', path: '/catering' },
+  { name: 'nav.catering', path: '/servicios-catering' },
   { name: 'nav.contact', path: '/contacto' },
 ];
 
