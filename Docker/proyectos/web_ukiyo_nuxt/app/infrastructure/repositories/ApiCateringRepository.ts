@@ -11,8 +11,14 @@ export class ApiCateringRepository implements CateringRepository {
     try {
       // 🚀 DESVÍO DE CONTINGENCIA PARA LA DEMO:
       // Conectamos directamente con Formspree en lugar de la API del backend inactiva.
-      // Esto mantiene el contrato de la Arquitectura Hexagonal intacto en el frontend.
       const FORMSPREE_URL = 'https://formspree.io/f/mojzapoj';
+
+      // Diccionario para traducir los valores técnicos del <select> a texto elegante para el email
+      const nombresEventos: Record<string, string> = {
+        corporate: 'Evento Corporativo',
+        wedding: 'Boda / Comunión',
+        birthday: 'Fiesta Privada'
+      };
 
       const response = await fetch(FORMSPREE_URL, {
         method: 'POST',
@@ -20,13 +26,13 @@ export class ApiCateringRepository implements CateringRepository {
           'Accept': 'application/json',
           'Content-Type': 'application/json'
         },
-        // Mapeamos los campos sanitizados del dominio al JSON que espera recibir Formspree
+        // Mapeamos los campos sanitizados traduciendo el tipo de evento en tiempo de envío
         body: JSON.stringify({
           Nombre: datos.nombre,
           Email: datos.email,
           Fecha: datos.fecha,
           Invitados: datos.invitados,
-          Tipo_Evento: datos.tipoEvento,
+          Tipo_Evento: nombresEventos[datos.tipoEvento] || datos.tipoEvento, // ◄ ¡Traducción automática!
           Detalles: datos.detalles
         })
       });
