@@ -6,13 +6,12 @@ import { UpdateUserRoleUseCase } from '~/modules/users/application/update-user-r
 import { DeleteUserUseCase } from '~/modules/users/application/delete-user.usecase'
 import type { User } from '~/modules/users/domain/user.model'
 
-// Configuración de columnas con anchos explícitos para evitar que el ID se corte en PC
 const columns = [
-  { key: 'avatar', label: 'Usuario', class: 'w-[180px]' },
+  { key: 'avatar', label: 'Usuario' },
   { key: 'name', label: 'Nombre', sortable: true },
   { key: 'email', label: 'Email', sortable: true },
   { key: 'role', label: 'Rol', sortable: true },
-  { key: 'actions', label: 'Acciones', class: 'w-[80px]' }
+  { key: 'actions', label: 'Acciones' }
 ]
 
 const userRepository = new ApiUserRepository()
@@ -26,6 +25,19 @@ const errorMsg = ref('')
 const search = ref('')
 
 const getUserId = (user: User): string => user?.id || 'N/A'
+
+// Función para copiar el ID real al portapapeles de forma nativa y limpia
+const copyToClipboard = (text: string) => {
+  if (!text || text === 'N/A') return
+  navigator.clipboard.writeText(text)
+  alert('📋 ID copiado al portapapeles')
+}
+
+// Función para acortar visualmente el ID largo
+const formatId = (id: string): string => {
+  if (!id) return 'N/A'
+  return id.length > 8 ? `${id.substring(0, 8)}...` : id
+}
 
 const loadUsers = async () => {
   pending.value = true
@@ -135,13 +147,22 @@ const items = (row: User) => [
           class="p-4 flex flex-col gap-3 bg-white dark:bg-ukiyo-nav"
         >
           <div class="flex items-start justify-between gap-2">
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-3 min-w-0">
               <div class="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 shrink-0">
                 <UIcon name="i-heroicons-user-circle" class="w-7 h-7" />
               </div>
               <div class="min-w-0">
                 <h3 class="font-bold text-gray-900 dark:text-white text-base truncate">{{ user.name || 'Sin nombre' }}</h3>
-                <span class="text-xs font-mono text-gray-400 block mt-0.5 break-all">ID: {{ user.id }}</span>
+                <div class="flex items-center gap-1.5 mt-0.5">
+                  <span class="text-xs font-mono text-gray-400">ID: {{ formatId(user.id) }}</span>
+                  <button 
+                    @click="copyToClipboard(user.id)"
+                    class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                    title="Copiar ID completo"
+                  >
+                    <UIcon name="i-heroicons-clipboard-document" class="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             </div>
             
@@ -182,11 +203,20 @@ const items = (row: User) => [
           class="w-full"
         >
           <template #avatar-data="{ row }">
-            <div class="flex items-center gap-2 max-w-[170px]">
+            <div class="flex items-center gap-3">
               <div class="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 shrink-0">
                 <UIcon name="i-heroicons-user-circle" class="w-6 h-6" />
               </div>
-              <span class="font-mono text-xs text-gray-400 truncate">ID: {{ row.id }}</span>
+              <div class="flex items-center gap-1">
+                <span class="font-mono text-xs text-gray-400" :title="row.id">ID: {{ formatId(row.id) }}</span>
+                <button 
+                  @click="copyToClipboard(row.id)"
+                  class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors p-0.5"
+                  title="Copiar ID completo"
+                >
+                  <UIcon name="i-heroicons-clipboard-document" class="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
           </template>
 
@@ -225,7 +255,7 @@ const items = (row: User) => [
 </template>
 
 <style scoped>
-/* Estilos mínimos para que la tabla en PC mantenga estructura sin forzar recortes agresivos */
+/* Respetar el flujo fluido de la tabla sin forzar comportamientos extraños */
 :deep(table) {
   width: 100% !important;
 }
