@@ -9,16 +9,31 @@ export class ApiCateringRepository implements CateringRepository {
 
   async enviarSolicitud(datos: SolicitudCatering): Promise<boolean> {
     try {
-      const response = await fetch(`${this.getBaseUrl()}/catering`, {
+      // 🚀 DESVÍO DE CONTINGENCIA PARA LA DEMO:
+      // Conectamos directamente con Formspree en lugar de la API del backend inactiva.
+      // Esto mantiene el contrato de la Arquitectura Hexagonal intacto en el frontend.
+      const FORMSPREE_URL = 'https://formspree.io/f/mojzapoj';
+
+      const response = await fetch(FORMSPREE_URL, {
         method: 'POST',
         headers: {
+          'Accept': 'application/json',
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(datos)
+        // Mapeamos los campos sanitizados del dominio al JSON que espera recibir Formspree
+        body: JSON.stringify({
+          Nombre: datos.nombre,
+          Email: datos.email,
+          Fecha: datos.fecha,
+          Invitados: datos.invitados,
+          Tipo_Evento: datos.tipoEvento,
+          Detalles: datos.detalles
+        })
       });
+
       return response.ok;
     } catch (error) {
-      console.error('❌ Error [ApiCateringRepository]:', error);
+      console.error('❌ Error [ApiCateringRepository - Contingencia Demo]:', error);
       return false;
     }
   }
