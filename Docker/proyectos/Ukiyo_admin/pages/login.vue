@@ -7,33 +7,29 @@ definePageMeta({
   layout: 'auth'
 })
 
-const email = ref('')
+const username = ref('') // ◄ Cambiado a username para aclararnos
 const password = ref('')
 const isLoading = ref(false)
 const showError = ref(false)
 const router = useRouter()
 
-// Instanciamos el repositorio del módulo de usuarios
 const userRepository = new ApiUserRepository()
 
 const handleLogin = async () => {
-  if (!email.value || !password.value) return
+  if (!username.value || !password.value) return
 
   isLoading.value = true
   showError.value = false
 
-  // 🚀 Llama al método real que acabamos de meter en vuestro módulo
-  const sesionReal = await userRepository.login(email.value, password.value)
+  // Enviamos los datos directamente al repositorio modificado
+  const sesionReal = await userRepository.login(username.value, password.value)
 
   isLoading.value = false
 
   if (sesionReal) {
-    // Si los datos son válidos, guardamos la sesión en el LocalStorage
     localStorage.setItem('user_session', JSON.stringify(sesionReal))
-    // Saltamos directos al Dashboard
     router.push('/')
   } else {
-    // Activamos la alerta visual de credenciales erróneas
     showError.value = true
   }
 }
@@ -56,12 +52,12 @@ const handleLogin = async () => {
           ❌ Usuario o contraseña incorrectos en el sistema.
         </p>
 
-        <UFormGroup label="Correo Electrónico" name="email" required>
+        <UFormGroup label="Nombre de Usuario" name="username" required>
           <UInput 
-            v-model="email" 
-            type="email" 
-            placeholder="admin@ukiyo.rest" 
-            icon="i-heroicons-envelope" 
+            v-model="username" 
+            type="text" 
+            placeholder="Introduce tu usuario (ej: prueba)" 
+            icon="i-heroicons-user" 
             autofocus
             size="md"
             required
