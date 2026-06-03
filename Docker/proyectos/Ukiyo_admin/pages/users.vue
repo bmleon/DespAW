@@ -6,13 +6,13 @@ import { UpdateUserRoleUseCase } from '~/modules/users/application/update-user-r
 import { DeleteUserUseCase } from '~/modules/users/application/delete-user.usecase'
 import type { User } from '~/modules/users/domain/user.model'
 
-// Configuración de columnas limpia y sincronizada con el modelo nativo
+// Configuración de columnas con anchos explícitos para evitar que el ID se corte en PC
 const columns = [
-  { key: 'avatar', label: 'Usuario' },
+  { key: 'avatar', label: 'Usuario', class: 'w-[180px]' },
   { key: 'name', label: 'Nombre', sortable: true },
   { key: 'email', label: 'Email', sortable: true },
   { key: 'role', label: 'Rol', sortable: true },
-  { key: 'actions', label: 'Acciones' }
+  { key: 'actions', label: 'Acciones', class: 'w-[80px]' }
 ]
 
 const userRepository = new ApiUserRepository()
@@ -97,6 +97,15 @@ const items = (row: User) => [
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Gestión de Usuarios</h1>
         <p class="text-gray-500 text-sm">Administra las cuentas registradas en la plataforma.</p>
       </div>
+      <UButton
+        icon="i-heroicons-arrow-path"
+        color="gray"
+        variant="solid"
+        :loading="pending"
+        @click="loadUsers"
+      >
+        Recargar datos
+      </UButton>
     </div>
 
     <UAlert 
@@ -127,12 +136,12 @@ const items = (row: User) => [
         >
           <div class="flex items-start justify-between gap-2">
             <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400">
+              <div class="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 shrink-0">
                 <UIcon name="i-heroicons-user-circle" class="w-7 h-7" />
               </div>
-              <div>
-                <h3 class="font-bold text-gray-900 dark:text-white text-base">{{ user.name || 'Sin nombre' }}</h3>
-                <span class="text-xs font-mono text-gray-400 block mt-0.5">ID: {{ user.id }}</span>
+              <div class="min-w-0">
+                <h3 class="font-bold text-gray-900 dark:text-white text-base truncate">{{ user.name || 'Sin nombre' }}</h3>
+                <span class="text-xs font-mono text-gray-400 block mt-0.5 break-all">ID: {{ user.id }}</span>
               </div>
             </div>
             
@@ -143,10 +152,10 @@ const items = (row: User) => [
             </ClientOnly>
           </div>
 
-          <div class="grid grid-cols-2 gap-2 pt-2 border-t border-gray-50 dark:border-gray-800/50 text-xs">
-            <div>
+          <div class="grid grid-cols-2 gap-4 pt-2 border-t border-gray-50 dark:border-gray-800/50 text-xs">
+            <div class="min-w-0">
               <span class="text-gray-400 block font-medium uppercase tracking-wider mb-0.5">Email</span>
-              <span class="text-gray-700 dark:text-gray-300 break-all">{{ user.email }}</span>
+              <span class="text-gray-700 dark:text-gray-300 break-all block">{{ user.email }}</span>
             </div>
             <div class="text-right">
               <span class="text-gray-400 block font-medium uppercase tracking-wider mb-0.5">Rol</span>
@@ -165,7 +174,7 @@ const items = (row: User) => [
         </div>
       </div>
 
-      <div class="hidden md:block">
+      <div class="hidden md:block overflow-x-auto">
         <UTable 
           :columns="columns" 
           :rows="filteredUsers" 
@@ -173,11 +182,11 @@ const items = (row: User) => [
           class="w-full"
         >
           <template #avatar-data="{ row }">
-            <div class="flex items-center gap-2">
-              <div class="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400">
+            <div class="flex items-center gap-2 max-w-[170px]">
+              <div class="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 shrink-0">
                 <UIcon name="i-heroicons-user-circle" class="w-6 h-6" />
               </div>
-              <span class="font-mono text-xs text-gray-400">ID: {{ row.id }}</span>
+              <span class="font-mono text-xs text-gray-400 truncate">ID: {{ row.id }}</span>
             </div>
           </template>
 
@@ -216,14 +225,8 @@ const items = (row: User) => [
 </template>
 
 <style scoped>
+/* Estilos mínimos para que la tabla en PC mantenga estructura sin forzar recortes agresivos */
 :deep(table) {
-  table-layout: fixed !important;
   width: 100% !important;
-}
-
-:deep(th), :deep(td) {
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  white-space: nowrap !important;
 }
 </style>
