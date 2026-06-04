@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { ApiProductRepository } from '~/modules/products/infrastructure/api-product.repository'
-import type { Product } from '~/modules/products/domain/product.model'
 
 const productRepository = new ApiProductRepository()
 
-// Estados del formulario - 🌟 Ahora inicializamos con el objeto completo para que Nuxt UI no se líe
+// Estados del formulario
 const name = ref('')
 const price = ref(0)
 const extensionImagen = ref('.jpg')
@@ -43,7 +42,7 @@ const handleGuardarPlato = async () => {
   errorMsg.value = ''
   successMsg.value = ''
 
-  // AUTOMATIZACIÓN DE LA RUTA:
+  // AUTOMATIZACIÓN DE LA RUTA DE LA IMAGEN:
   const nombreNormalizado = name.value
     .toLowerCase()
     .trim()
@@ -53,20 +52,27 @@ const handleGuardarPlato = async () => {
   const rutaImagenFinal = `/comida/${nombreNormalizado}${extensionImagen.value}`
 
   try {
-    // 🌟 NORMALIZACIÓN DE CATEGORÍA: 
-    // Sacamos el valor en minúsculas ('entrantes') y le ponemos la primera en Mayúscula ('Entrantes')
-    // por si vuestro backend es Case-Sensitive (sensible a mayúsculas).
-    const valorCategoria = selectedCategory.value.value;
-    const categoriaFormateada = valorCategoria.charAt(0).toUpperCase() + valorCategoria.slice(1);
+    // 🌟 CORRECCIÓN DE BIENESTAR PARA EL NUEVO BACKEND:
+    // Extraemos la etiqueta limpia ('Entrantes', 'Novedades!') o el valor,
+    // y lo pasamos radicalmente a MAYÚSCULAS ('ENTRANTES', 'NOVEDADES!') tal y como pide el backend.
+    const categoriaFormateada = selectedCategory.value.label.toUpperCase().trim()
 
-    const nuevoProducto: Product = {
-      name: name.value,
-      price: Number(price.value),
-      description: rutaImagenFinal, 
-      category: categoriaFormateada, // 👈 Enviamos 'Entrantes' impecable
-      available: true
+    // 🚀 CONSTRUCCIÓN DEL OBJETO CORREGIDO SEGÚN EL DTO REAL:
+    // Usamos 'any' temporalmente al llamar al repositorio si vuestro modelo 'Product' local 
+    // todavía tiene la propiedad escrita como 'category' en inglés, evitando errores de tipado en el front.
+    const nuevoProducto: any = {
+      nombre: name.value.trim(),
+      precio: Number(price.value),
+      descripcion: `Exquisito plato de ${name.value.trim()} al estilo tradicional Ukiyo.`,
+      disponible: true,
+      
+      // 🌟 Cambiado 'category' por 'categoria' en español y forzado a MAYÚSCULAS
+      categoria: categoriaFormateada 
     }
 
+    console.log('📦 Enviando plato sanitizado al nuevo DTO libre de bloqueos:', nuevoProducto)
+
+    // Disparamos la petición al repositorio
     await productRepository.create(nuevoProducto)
 
     successMsg.value = '¡Plato gastronómico creado con éxito en Ukiyo!'
@@ -95,7 +101,7 @@ const handleGuardarPlato = async () => {
         
         <div>
           <label class="block text-xs font-bold uppercase text-gray-400 mb-2">Nombre del Plato *</label>
-          <UInput v-model="name" placeholder="Ej: Edamame" required class="w-full" />
+          <UInput v-model="name" placeholder="Ej: Ensalada Wakame" required class="w-full" />
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
