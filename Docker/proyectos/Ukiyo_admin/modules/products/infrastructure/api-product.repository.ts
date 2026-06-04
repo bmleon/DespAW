@@ -1,3 +1,4 @@
+// modules/products/infrastructure/api-product.repository.ts
 import { ofetch } from 'ofetch';
 import type { ProductRepository } from '../domain/product.repository';
 import type { Product } from '../domain/product.model';
@@ -9,20 +10,19 @@ export class ApiProductRepository implements ProductRepository {
     this.baseUrl = 'https://ukiyocazorla.es'; 
   }
 
-  // 1. Obtener todos los platos de la BD (Mapea de Español a tu interfaz Product)
+  // 1. Obtener todos los platos de la BD (Mapea de Español al modelo Product)
   async findAll(): Promise<Product[]> {
     try {
       const data = await ofetch<any[]>(`${this.baseUrl}/api/productos`);
       
       if (!Array.isArray(data)) return [];
 
-      // Traducimos lo que viene del Back en español al modelo oficial en inglés
       return data.map((item: any) => ({
         id: item.id ? String(item.id) : undefined,
         name: item.nombre || 'Plato sin nombre',
         description: item.descripcion || '',
         price: Number(item.precio) || 0,
-        category: item.categoria || 'entrantes', // Sincronizado por defecto en minúsculas
+        category: item.categoria || 'entrantes', 
         available: item.disponible !== false
       }));
     } catch (error) {
@@ -31,24 +31,24 @@ export class ApiProductRepository implements ProductRepository {
     }
   }
 
-  // 2. Guardar un plato nuevo (Mapea de tu interfaz Product al CreateProductoDto del back)
+  // 2. Guardar un plato nuevo adaptado al DTO en español de tu compañero
   async create(product: Product): Promise<Product> {
     try {
-      // 🌟 CORRECCIÓN: Ahora añadimos obligatoriamente el campo 'categoria' que exige el backend
       const bodyDto = {
-        nombre: product.name,
+        nombre: product.name.trim(),
         precio: Number(product.price),
-        descripcion: product.description || 'Sin descripción',
-        categoria: product.category, // 👈 ¡Imprescindible que envíe esta clave exacta!
+        categoria: product.category.toUpperCase().trim(), // Forzado en mayúsculas para cumplir el DTO
+        descripcion: product.description || `Exquisito plato de ${product.name.trim()} al estilo Ukiyo.`,
         disponible: product.available !== false
       };
+
+      console.log('🚀 Repositorio enviando DTO oficial al clúster:', bodyDto);
 
       const response = await ofetch<any>(`${this.baseUrl}/api/productos`, {
         method: 'POST',
         body: bodyDto
       });
 
-      // Retornamos el objeto adaptado exactamente a la interfaz oficial 'Product'
       return {
         id: response?.id ? String(response.id) : undefined,
         name: response?.nombre || product.name,
@@ -57,9 +57,9 @@ export class ApiProductRepository implements ProductRepository {
         category: response?.categoria || product.category, 
         available: response?.disponible !== false
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error al crear el producto en la API:', error);
-      throw new Error('No se pudo guardar el producto.');
+      throw error;
     }
   }
 

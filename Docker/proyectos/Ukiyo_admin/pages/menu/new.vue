@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { ApiProductRepository } from '~/modules/products/infrastructure/api-product.repository'
 
-const productRepository = new ApiProductRepository()
+definePageMeta({
+  layout: 'default'
+})
 
-// Estados del formulario
+// Estados originales de tu formulario
 const name = ref('')
 const price = ref(0)
 const extensionImagen = ref('.jpg')
@@ -13,7 +14,7 @@ const isLoading = ref(false)
 const errorMsg = ref('')
 const successMsg = ref('')
 
-// Array mapeado con las 12 categorías reales de Ukiyo
+// Array mapeado con las 12 categorías reales de Ukiyo (Con sus Labels correctos)
 const categories = [
   { label: 'Entrantes', value: 'entrantes' },
   { label: 'Niguiris', value: 'niguiris' },
@@ -29,7 +30,7 @@ const categories = [
   { label: 'Suplementos', value: 'suplementos' }
 ]
 
-// Estado reactivo que guarda el objeto seleccionado del menú
+// Estado reactivo para la categoría seleccionada
 const selectedCategory = ref(categories[0])
 
 const handleGuardarPlato = async () => {
@@ -42,47 +43,56 @@ const handleGuardarPlato = async () => {
   errorMsg.value = ''
   successMsg.value = ''
 
-  // AUTOMATIZACIÓN DE LA RUTA DE LA IMAGEN:
+  // 1. Automatización del nombre de la foto física para la descripción
+  // Convierte "Ensalada Wakame" -> "ensalada-wakame"
   const nombreNormalizado = name.value
     .toLowerCase()
     .trim()
     .replace(/\s+/g, '-') 
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
 
+  // Montamos la ruta idéntica a vuestro estándar estático
   const rutaImagenFinal = `/comida/${nombreNormalizado}${extensionImagen.value}`
 
   try {
-    // 🌟 CORRECCIÓN DE BIENESTAR PARA EL NUEVO BACKEND:
-    // Extraemos la etiqueta limpia ('Entrantes', 'Novedades!') o el valor,
-    // y lo pasamos radicalmente a MAYÚSCULAS ('ENTRANTES', 'NOVEDADES!') tal y como pide el backend.
-    const categoriaFormateada = selectedCategory.value.label.toUpperCase().trim()
+    // 2. Extraemos el texto exacto de la categoría ('Entrantes', 'Niguiris') tal y como lo lee tu formulario
+    const categoriaTexto = selectedCategory.value.label.trim()
 
-    // 🚀 CONSTRUCCIÓN DEL OBJETO CORREGIDO SEGÚN EL DTO REAL:
-    // Usamos 'any' temporalmente al llamar al repositorio si vuestro modelo 'Product' local 
-    // todavía tiene la propiedad escrita como 'category' en inglés, evitando errores de tipado en el front.
-    const nuevoProducto: any = {
+    // 🚀 CLONACIÓN DEL POSTMAN EXCELENTE:
+    // Construimos el JSON idéntico con las 4 propiedades estrictas que acepta el CreateProductoDto
+    const bodyPayload = {
       nombre: name.value.trim(),
-      precio: Number(price.value),
-      descripcion: `Exquisito plato de ${name.value.trim()} al estilo tradicional Ukiyo.`,
-      disponible: true,
-      
-      // 🌟 Cambiado 'category' por 'categoria' en español y forzado a MAYÚSCULAS
-      categoria: categoriaFormateada 
+      precio: Number(price.value), // Forzamos número puro para evitar "The string camouflaged"
+      categoria: categoriaTexto,   // Mandamos 'Entrantes', 'Niguiris' en formato exacto
+      descripcion: rutaImagenFinal  // Guardamos la foto en la descripción como vuestra lógica exige
     }
 
-    console.log('📦 Enviando plato sanitizado al nuevo DTO libre de bloqueos:', nuevoProducto)
+    console.log('🚀 Enviando réplica exacta de Postman al Gateway:', bodyPayload)
 
-    // Disparamos la petición al repositorio
-    await productRepository.create(nuevoProducto)
+    // 3. Petición directa libre de intermediarios o repositorios desactualizados
+    await $fetch('https://ukiyocazorla.es/api/productos', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: bodyPayload
+    })
 
+    // Si pasamos el Gateway, mostramos éxito
     successMsg.value = '¡Plato gastronómico creado con éxito en Ukiyo!'
+    
+    // Limpiamos los campos
+    name.value = ''
+    price.value = 0
+
     setTimeout(() => {
       navigateTo('/menu') 
     }, 1500)
 
   } catch (err: any) {
-    console.error('Error al guardar el producto:', err)
-    errorMsg.value = err.data?.message || 'El Gateway rechazó el producto. Verifica el formato.'
+    console.error('Error crítico al guardar el producto:', err)
+    errorMsg.value = err.data?.message || 'El Gateway rechazó el producto. Verifica el formato de validación.'
   } finally {
     isLoading.value = false
   }
@@ -134,7 +144,7 @@ const handleGuardarPlato = async () => {
             class="text-sm text-gray-500"
           />
           <p class="text-gray-400 text-[11px] mt-2 italic">
-            Asegúrate de que la foto física esté guardada exactamente en la carpeta del cliente bajo: <code class="text-primary-400">public/comida/</code>
+            Asegúrate de que la foto física esté guardada exactamente en la carpeta del cliente bajo: <code class="text-amber-500">public/comida/</code>
           </p>
         </div>
 
@@ -143,7 +153,7 @@ const handleGuardarPlato = async () => {
 
         <div class="flex justify-end gap-2 pt-2">
           <UButton color="gray" variant="ghost" to="/menu" :disabled="isLoading">Cancelar</UButton>
-          <UButton type="submit" color="primary" :loading="isLoading">
+          <UButton type="submit" color="amber" variant="solid" :loading="isLoading" class="font-bold uppercase tracking-wider text-xs px-4">
             {{ isLoading ? 'Guardando...' : 'Crear Plato' }}
           </UButton>
         </div>
