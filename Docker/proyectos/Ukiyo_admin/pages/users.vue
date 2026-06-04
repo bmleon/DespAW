@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ApiUserRepository } from '~/modules/users/infrastructure/api-user.repository'
 
 definePageMeta({
@@ -9,7 +9,7 @@ definePageMeta({
 const userRepository = new ApiUserRepository()
 
 // ==========================================
-// ESTADOS DE LA LISTA DE USUARIOS
+// ESTADOS DE LA LISTA DE USUARIOS Y BUSCADOR
 // ==========================================
 interface UserItem {
   id: string
@@ -20,7 +20,9 @@ interface UserItem {
 
 const users = ref<UserItem[]>([])
 const isLoadingTable = ref(false)
+const searchFilter = ref('') // 🌟 Estado reactivo para el buscador
 
+// Función para cargar los usuarios de forma asíncrona y real
 const loadUsers = async () => {
   isLoadingTable.value = true
   try {
@@ -34,8 +36,22 @@ const loadUsers = async () => {
   }
 }
 
+// 🌟 PROPIEDAD COMPUTADA PARA FILTRAR EN TIEMPO REAL
+// Busca coincidencias tanto en el nombre de usuario como en el correo electrónico
+const filteredUsers = computed(() => {
+  if (!searchFilter.value) return users.value
+  
+  const query = searchFilter.value.toLowerCase().trim()
+  return users.value.filter(user => {
+    return (
+      user.name.toLowerCase().includes(query) || 
+      user.email.toLowerCase().includes(query)
+    )
+  })
+})
+
 // ==========================================
-// ESTADOS DE LA GESTIÓN DE ROLES (TABLA SUPERIOR)
+// ESTADOS DE LA GESTIÓN DE ROLES
 // ==========================================
 const usuarioSeleccionadoId = ref('')
 const rolSeleccionado = ref('CLIENTE')
@@ -76,12 +92,11 @@ const ejecutarCambioDeRol = async () => {
 const isOpenModal = ref(false)
 const isSavingUser = ref(false)
 
-// 🌟 Definición exacta del objeto del formulario
 const nuevoUsuario = ref({
   username: '',
   email: '',
   password: '',
-  roleValue: 'CAMARERO' // Usamos de forma fija la clave 'roleValue'
+  roleValue: 'CAMARERO'
 })
 
 const guardarNuevoUsuario = async () => {
@@ -89,15 +104,13 @@ const guardarNuevoUsuario = async () => {
   isSavingUser.value = true
 
   try {
-    // 🌟 CORRECCIÓN ERROR 2339: Leemos la propiedad correcta 'roleValue' que existe en el objeto ref
     let rolParaPintar = nuevoUsuario.value.roleValue;
 
-    // Generamos el payload limpio para saltar la restricción P2025 del microservicio
     const bodyPayload = {
       username: nuevoUsuario.value.username.trim(),
       email: nuevoUsuario.value.email.trim(),
       password: nuevoUsuario.value.password,
-      roles: [] // Enviamos el array vacío que el backend valida como correcto (USER por defecto)
+      roles: [] 
     };
 
     console.log('🚀 Enviando payload blindado para bypass de roles:', bodyPayload);
@@ -113,7 +126,6 @@ const guardarNuevoUsuario = async () => {
 
     const nuevoId = response?.id || Math.random().toString();
 
-    // Insertamos dinámicamente en la tabla local el rol que elegiste en la interfaz
     users.value.push({
       id: nuevoId,
       name: nuevoUsuario.value.username.trim(),
@@ -121,7 +133,6 @@ const guardarNuevoUsuario = async () => {
       role: rolParaPintar === 'CLIENTE' ? 'Cliente' : rolParaPintar
     });
 
-    // Limpiamos los inputs restableciendo el estado original
     nuevoUsuario.value = { username: '', email: '', password: '', roleValue: 'CAMARERO' }
     isOpenModal.value = false
     
@@ -198,9 +209,23 @@ onMounted(async () => {
     </div>
 
     <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden shadow-sm">
-      <div class="p-4 border-b border-gray-200 dark:border-gray-800 flex justify-between items-center bg-gray-50/50 dark:bg-gray-950/20">
-        <span class="text-xs font-bold uppercase tracking-widest text-gray-400">Usuarios Registrados en el Sistema</span>
-        <UButton icon="i-heroicons-arrow-path" color="gray" variant="ghost" size="xs" :loading="isLoadingTable" @click="loadUsers" />
+      
+      <div class="p-4 border-b border-gray-200 dark:border-gray-800 flex flex-col sm:flex-row gap-4 justify-between items-stretch sm:items-center bg-gray-50/50 dark:bg-gray-950/20">
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-bold uppercase tracking-widest text-gray-400">Usuarios Registrados</span>
+          <UButton icon="i-heroicons-arrow-path" color="gray" variant="ghost" size="xs" :loading="isLoadingTable" @click="loadUsers" />
+        </div>
+        
+        <div class="w-full sm:w-80">
+          <UInput
+            v-model="searchFilter"
+            icon="i-heroicons-magnifying-glass"
+            placeholder="Buscar por usuario o email..."
+            color="amber"
+            size="sm"
+            clearable
+          />
+        </div>
       </div>
 
       <div class="overflow-x-auto">
@@ -214,10 +239,10 @@ onMounted(async () => {
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-200 dark:divide-gray-800 text-sm">
-            <tr v-if="users.length === 0" class="text-center text-gray-400 py-8">
-              <td colspan="4" class="p-8">No se encontraron usuarios en la base de datos o el microservicio está cargando...</td>
+            <tr v-if="filteredUsers.length === 0" class="text-center text-gray-400 py-8">
+              <td colspan="4" class="p-8">No se encontraron usuarios coincidentes en la lista...</td>
             </tr>
-            <tr v-for="user in users" :key="user.id" class="hover:bg-gray-50 dark:hover:bg-gray-950/30 transition-colors" :class="{'bg-amber-50/30 dark:bg-amber-950/10 border-l-2 border-amber-500': usuarioSeleccionadoId === user.id}">
+            <tr v-for="user in filteredUsers" :key="user.id" class="hover:bg-gray-50 dark:hover:bg-gray-950/30 transition-colors" :class="{'bg-amber-50/30 dark:bg-amber-950/10 border-l-2 border-amber-500': usuarioSeleccionadoId === user.id}">
               <td class="p-4 font-medium text-gray-900 dark:text-white">{{ user.name }}</td>
               <td class="p-4 text-gray-500 dark:text-gray-400">{{ user.email }}</td>
               <td class="p-4">

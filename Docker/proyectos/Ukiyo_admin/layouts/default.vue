@@ -7,16 +7,14 @@ const links = [
   { label: 'Usuarios', icon: 'i-heroicons-users', to: '/users' },
   { label: 'Carta / Menú', icon: 'i-heroicons-cake', to: '/menu' },
   { label: 'Pedidos Delivery', icon: 'i-heroicons-shopping-bag', to: '/orders' },
-  // NUEVOS ENLACES
   { label: 'Solicitudes Eventos', icon: 'i-heroicons-calendar-days', to: '/events' },
   { label: 'Inventario', icon: 'i-heroicons-archive-box', to: '/inventory' },
-  
   { label: 'Configuración', icon: 'i-heroicons-cog-6-tooth', to: '/settings' }
 ]
 
 const isOpen = ref(false)
 
-// 🌟 ESTADOS REACTIVOS PARA EL ADMINISTRADOR DINÁMICO
+// ESTADOS REACTIVOS PARA EL ADMINISTRADOR DINÁMICO
 const userName = ref('Cargando...')
 const userRole = ref('Personal')
 const avatarUrl = ref('https://ui-avatars.com/api/?name=U&background=C5A059&color=fff')
@@ -38,6 +36,24 @@ onMounted(() => {
     navigateTo('/login')
   }
 })
+
+// 🚀 FUNCIÓN MAESTRA DE LOGOUT ADAPTADA A UKIYO GESTIÓN
+const cerrarSesionAdmin = () => {
+  console.log('🔐 Cerrando sesión y limpiando tokens de Ukiyo Admin...')
+  
+  // 1. Limpiamos toda la persistencia local y tokens del clúster
+  localStorage.removeItem('user_session')
+  localStorage.removeItem('token')
+  localStorage.removeItem('user')
+  localStorage.removeItem('auth')
+
+  // Limpieza adicional de cookies de seguridad en Nuxt 3 por si acaso
+  const tokenCookie = useCookie('token')
+  tokenCookie.value = null
+
+  // 2. Redirección forzada inmediata a la pantalla de login limpia
+  navigateTo('/login')
+}
 </script>
 
 <template>
@@ -47,7 +63,7 @@ onMounted(() => {
       
       <div class="h-16 flex items-center px-6 border-b border-gray-200 dark:border-gray-800">
         <span class="font-black text-xl tracking-widest text-gray-900 dark:text-white">
-          UKIYO <span class="text-ukiyo-gold text-xs font-normal">ADMIN</span>
+          UKIYO <span class="text-amber-500 text-xs font-normal">ADMIN</span>
         </span>
       </div>
 
@@ -56,7 +72,7 @@ onMounted(() => {
           <UVerticalNavigation :links="links" :ui="{
             padding: 'py-2.5',
             font: 'font-medium',
-            active: 'text-gray-950 dark:text-ukiyo-gold bg-gray-100 dark:bg-gray-800 before:bg-ukiyo-gold',
+            active: 'text-gray-950 dark:text-amber-500 bg-gray-100 dark:bg-gray-800 before:bg-amber-500',
             inactive: 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800/50'
           }" />
           <template #fallback>
@@ -67,17 +83,29 @@ onMounted(() => {
         </ClientOnly>
       </div>
 
-      <div class="p-4 border-t border-gray-200 dark:border-gray-800">
-        <div class="flex items-center gap-3">
+      <div class="p-4 border-t border-gray-200 dark:border-gray-800 space-y-3 bg-gray-50/50 dark:bg-gray-950/20">
+        <UButton
+          color="red"
+          variant="ghost"
+          icon="i-heroicons-arrow-left-on-rectangle"
+          block
+          size="sm"
+          class="font-bold uppercase tracking-wider text-xs justify-start hover:bg-red-500/10"
+          @click="cerrarSesionAdmin"
+        >
+          Cerrar Sesión
+        </UButton>
+
+        <div class="flex items-center gap-3 pt-1">
           <ClientOnly>
             <UAvatar :src="avatarUrl" :alt="userName" size="sm" />
             <template #fallback>
               <div class="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-800 animate-pulse" />
             </template>
           </ClientOnly>
-          <div class="text-sm">
-            <p class="font-medium text-gray-900 dark:text-white">{{ userName }}</p>
-            <p class="text-xs text-gray-500 dark:text-gray-400">{{ userRole }}</p>
+          <div class="text-sm overflow-hidden">
+            <p class="font-bold text-gray-900 dark:text-white truncate">{{ userName }}</p>
+            <p class="text-xs text-gray-400 truncate">{{ userRole }}</p>
           </div>
         </div>
       </div>
@@ -91,7 +119,6 @@ onMounted(() => {
         
         <div class="flex items-center gap-2">
           <ColorModeButton />
-          
           <UButton icon="i-heroicons-bell" color="gray" variant="ghost" />
         </div>
       </header>
@@ -103,13 +130,36 @@ onMounted(() => {
 
     <ClientOnly>
       <USlideover v-model="isOpen" side="left">
-        <div class="p-4 flex-1 flex flex-col bg-white dark:bg-gray-900 h-full">
-          <div class="h-16 flex items-center mb-4 border-b border-gray-100 dark:border-gray-800">
-            <span class="font-black text-xl tracking-widest text-gray-900 dark:text-white">UKIYO ADMIN</span>
+        <div class="p-4 flex-1 flex flex-col bg-white dark:bg-gray-900 h-full justify-between">
+          <div>
+            <div class="h-16 flex items-center mb-4 border-b border-gray-100 dark:border-gray-800">
+              <span class="font-black text-xl tracking-widest text-gray-900 dark:text-white">UKIYO ADMIN</span>
+            </div>
+            <UVerticalNavigation :links="links" @click="isOpen = false" :ui="{
+              active: 'text-gray-950 dark:text-amber-500 bg-gray-100 dark:bg-gray-800'
+            }" />
           </div>
-          <UVerticalNavigation :links="links" @click="isOpen = false" :ui="{
-            active: 'text-gray-950 dark:text-ukiyo-gold bg-gray-100 dark:bg-gray-800'
-          }" />
+
+          <div class="border-t border-gray-100 dark:border-gray-800 pt-4 space-y-3">
+            <UButton
+              color="red"
+              variant="ghost"
+              icon="i-heroicons-arrow-left-on-rectangle"
+              block
+              class="font-bold uppercase tracking-wider text-xs justify-start hover:bg-red-500/10"
+              @click="() => { isOpen = false; cerrarSesionAdmin(); }"
+            >
+              Cerrar Sesión
+            </UButton>
+
+            <div class="flex items-center gap-3 bg-gray-50 dark:bg-gray-950 p-3 rounded-xl">
+              <UAvatar :src="avatarUrl" :alt="userName" size="sm" />
+              <div class="text-sm">
+                <p class="font-bold text-gray-900 dark:text-white">{{ userName }}</p>
+                <p class="text-xs text-gray-400">{{ userRole }}</p>
+              </div>
+            </div>
+          </div>
         </div>
       </USlideover>
     </ClientOnly>
