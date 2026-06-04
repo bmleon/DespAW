@@ -21,7 +21,6 @@ interface UserItem {
 const users = ref<UserItem[]>([])
 const isLoadingTable = ref(false)
 
-// Función para cargar los usuarios de forma asíncrona y real
 const loadUsers = async () => {
   isLoadingTable.value = true
   try {
@@ -50,12 +49,16 @@ const opcionesRoles = [
   { value: 'REPARTIDOR', label: 'Personal: Repartidor' }
 ]
 
-// Seleccionar usuario para cambiar su rol
+// 🎨 Configuración UI personalizada para corregir el fondo blanco de los desplegables
+const selectUiConfig = {
+  select: 'bg-white dark:bg-zinc-800 text-gray-900 dark:text-white',
+  option: 'bg-white dark:bg-zinc-800 text-gray-900 dark:text-white hover:bg-amber-500 hover:text-black dark:hover:bg-amber-500'
+}
+
 const seleccionarUsuarioParaRol = (user: UserItem) => {
   usuarioSeleccionadoId.value = user.id
-  // Mapeamos el texto de la tabla de vuelta al valor del select
   const r = user.role.toUpperCase()
-  rolSeleccionado.value = r === 'CLIENTE' || r === 'CLIENT' || r === 'CLIENTE (LOCAL)' ? 'CLIENTE' : r
+  rolSeleccionado.value = (r === 'CLIENTE' || r === 'CLIENT' || r === 'CLIENTE (LOCAL)' || r === 'USER') ? 'CLIENTE' : r
 }
 
 const ejecutarCambioDeRol = async () => {
@@ -65,7 +68,6 @@ const ejecutarCambioDeRol = async () => {
   await userRepository.updateRole(usuarioSeleccionadoId.value, rolSeleccionado.value as any)
   
   isProcessingRole.value = false
-  // Recargamos la tabla para que se actualice el cambio en vivo
   await loadUsers()
   usuarioSeleccionadoId.value = ''
 }
@@ -76,12 +78,11 @@ const ejecutarCambioDeRol = async () => {
 const isOpenModal = ref(false)
 const isSavingUser = ref(false)
 
-// Objeto reactivo adaptado estrictamente al CreateUsuarioDto del Backend
 const nuevoUsuario = ref({
   username: '',
   email: '',
   password: '',
-  roles: ['CAMARERO'] // Rol por defecto al crear personal
+  roles: ['CAMARERO']
 })
 
 const guardarNuevoUsuario = async () => {
@@ -89,32 +90,46 @@ const guardarNuevoUsuario = async () => {
   isSavingUser.value = true
 
   try {
-    // Apuntamos al endpoint POST del microservicio de usuarios configurado en vuestro entorno
+    let rolSeleccionadoString = Array.isArray(nuevoUsuario.value.roles) 
+      ? nuevoUsuario.value.roles[0] 
+      : (nuevoUsuario.value.roles as string);
+
+    if (rolSeleccionadoString === 'CLIENTE') {
+      rolSeleccionadoString = 'USER';
+    }
+
+    const bodyPayload = {
+      username: nuevoUsuario.value.username.trim(),
+      email: nuevoUsuario.value.email.trim(),
+      password: nuevoUsuario.value.password,
+      roles: [rolSeleccionadoString.toUpperCase()] 
+    };
+
+    console.log('🚀 Enviando payload real de alta al microservicio:', bodyPayload);
+
     await $fetch('https://ukiyocazorla.es/api/usuarios', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: {
-        username: nuevoUsuario.value.username,
-        email: nuevoUsuario.value.email,
-        password: nuevoUsuario.value.password,
-        roles: nuevoUsuario.value.roles
-      }
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: bodyPayload
     })
 
-    // Limpiamos el formulario y cerramos modal
     nuevoUsuario.value = { username: '', email: '', password: '', roles: ['CAMARERO'] }
     isOpenModal.value = false
-    
-    // Refrescamos la tabla para ver al nuevo empleado listado
     await loadUsers()
-  } catch (error) {
-    console.error('❌ Error al insertar el usuario en la BD:', error)
+    
+  } catch (error: any) {
+    console.error('❌ Error al insertar el usuario en la BD:', error);
+    if (error.data?.message) {
+      console.error('📋 Detalle del validador del backend:', error.data.message);
+    }
   } finally {
     isSavingUser.value = false
   }
 }
 
-// Inicialización de la pantalla al cargar
 onMounted(async () => {
   await loadUsers()
 })
@@ -157,6 +172,7 @@ onMounted(async () => {
         <USelect 
           v-model="rolSeleccionado" 
           :options="opcionesRoles" 
+          :ui="selectUiConfig"
           color="amber" 
           size="md" 
           class="w-full sm:w-64"
@@ -205,7 +221,7 @@ onMounted(async () => {
                 <span class="px-2.5 py-1 text-xs font-bold rounded-full uppercase tracking-wide"
                   :class="{
                     'bg-red-50 dark:bg-red-950/30 text-red-500': user.role === 'ADMIN' || user.role === 'Administrador',
-                    'bg-blue-50 dark:bg-blue-950/30 text-blue-500': user.role === 'Cliente' || user.role === 'CLIENTE',
+                    'bg-blue-50 dark:bg-blue-950/30 text-blue-500': user.role === 'Cliente' || user.role === 'CLIENTE' || user.role === 'USER',
                     'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-500': ['CAMARERO', 'COCINERO', 'REPARTIDOR'].includes(user.role.toUpperCase())
                   }">
                   {{ user.role }}
@@ -250,8 +266,9 @@ onMounted(async () => {
 
           <UFormGroup label="Rol Inicial de Trabajo">
             <USelect 
-              v-model="nuevoUsuario.roles[0]" 
+              v-model="nuevoUsuario.roles" 
               :options="opcionesRoles" 
+              :ui="selectUiConfig"
               color="amber" 
               size="md" 
             />
