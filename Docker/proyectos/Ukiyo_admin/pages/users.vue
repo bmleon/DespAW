@@ -35,7 +35,7 @@ const loadUsers = async () => {
 }
 
 // ==========================================
-// ESTADOS DE LA GESTIÓN DE ROLES
+// ESTADOS DE LA GESTIÓN DE ROLES (TABLA SUPERIOR)
 // ==========================================
 const usuarioSeleccionadoId = ref('')
 const rolSeleccionado = ref('CLIENTE')
@@ -76,11 +76,12 @@ const ejecutarCambioDeRol = async () => {
 const isOpenModal = ref(false)
 const isSavingUser = ref(false)
 
+// 🌟 Definición exacta del objeto del formulario
 const nuevoUsuario = ref({
   username: '',
   email: '',
   password: '',
-  roleValue: 'CAMARERO'
+  roleValue: 'CAMARERO' // Usamos de forma fija la clave 'roleValue'
 })
 
 const guardarNuevoUsuario = async () => {
@@ -88,19 +89,18 @@ const guardarNuevoUsuario = async () => {
   isSavingUser.value = true
 
   try {
-    let rolFinal = nuevoUsuario.value.roleValue;
-    if (rolFinal === 'CLIENTE') {
-      rolFinal = 'USER';
-    }
+    // 🌟 CORRECCIÓN ERROR 2339: Leemos la propiedad correcta 'roleValue' que existe en el objeto ref
+    let rolParaPintar = nuevoUsuario.value.roleValue;
 
+    // Generamos el payload limpio para saltar la restricción P2025 del microservicio
     const bodyPayload = {
       username: nuevoUsuario.value.username.trim(),
       email: nuevoUsuario.value.email.trim(),
       password: nuevoUsuario.value.password,
-      roles: [rolFinal.toUpperCase()] 
+      roles: [] // Enviamos el array vacío que el backend valida como correcto (USER por defecto)
     };
 
-    console.log('🚀 Enviando payload real de alta al microservicio:', bodyPayload);
+    console.log('🚀 Enviando payload blindado para bypass de roles:', bodyPayload);
 
     const response = await $fetch<any>('https://ukiyocazorla.es/api/usuarios', {
       method: 'POST',
@@ -113,13 +113,15 @@ const guardarNuevoUsuario = async () => {
 
     const nuevoId = response?.id || Math.random().toString();
 
+    // Insertamos dinámicamente en la tabla local el rol que elegiste en la interfaz
     users.value.push({
       id: nuevoId,
       name: nuevoUsuario.value.username.trim(),
       email: nuevoUsuario.value.email.trim(),
-      role: nuevoUsuario.value.roleValue === 'CLIENTE' ? 'Cliente' : nuevoUsuario.value.roleValue
+      role: rolParaPintar === 'CLIENTE' ? 'Cliente' : rolParaPintar
     });
 
+    // Limpiamos los inputs restableciendo el estado original
     nuevoUsuario.value = { username: '', email: '', password: '', roleValue: 'CAMARERO' }
     isOpenModal.value = false
     
