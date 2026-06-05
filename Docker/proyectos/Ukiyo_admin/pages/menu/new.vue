@@ -1,11 +1,16 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 
 definePageMeta({
   layout: 'default'
 })
 
-// Estados originales de tu formulario
+const route = useRoute()
+const isEditMode = ref(false)
+const productId = ref('')
+
+// Estados del formulario
 const name = ref('')
 const price = ref(0)
 const extensionImagen = ref('.jpg')
@@ -14,7 +19,7 @@ const isLoading = ref(false)
 const errorMsg = ref('')
 const successMsg = ref('')
 
-// Array mapeado con las 12 categorías reales de Ukiyo (Con sus Labels correctos)
+// Array mapeado con las 12 categorías reales de Ukiyo
 const categories = [
   { label: 'Entrantes', value: 'entrantes' },
   { label: 'Niguiris', value: 'niguiris' },
@@ -30,8 +35,38 @@ const categories = [
   { label: 'Suplementos', value: 'suplementos' }
 ]
 
-// Estado reactivo para la categoría seleccionada
 const selectedCategory = ref(categories[0])
+
+// 🌟 DETECTOR DE MODO: Si viene un ?id= en la URL, cargamos el plato para editar
+onMounted(async () => {
+  if (route.query.id) {
+    isEditMode.value = true
+    productId.value = String(route.query.id)
+    isLoading.value = true
+    
+    try {
+      console.log(`🔍 Cargando datos del producto ${productId.value} para editar...`)
+      // Pedimos los datos del plato específico al backend
+      const producto = await $fetch<any>(`https://ukiyocazorla.es/api/productos/${productId.value}`)
+      
+      if (producto) {
+        name.value = producto.nombre || ''
+        price.value = Number(producto.precio) || 0
+        
+        // Buscamos su categoría en nuestro array para seleccionarla en el desplegable
+        const catEncontrada = categories.find(c => c.label.toUpperCase() === producto.categoria?.toUpperCase())
+        if (catEncontrada) {
+          selectedCategory.value = catEncontrada
+        }
+      }
+    } catch (err) {
+      console.error('Error al cargar el producto para edición:', err)
+      errorMsg.value = 'No se pudieron precargar los datos del plato.'
+    } finally {
+      isLoading.value = false
+    }
+  }
+})
 
 const handleGuardarPlato = async () => {
   if (!name.value || price.value < 0) {
@@ -43,35 +78,35 @@ const handleGuardarPlato = async () => {
   errorMsg.value = ''
   successMsg.value = ''
 
-  // 1. Automatización del nombre de la foto física para la descripción
-  // Convierte "Ensalada Wakame" -> "ensalada-wakame"
-  const nombreNormalizado = name.value
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, '-') 
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
-
-  // Montamos la ruta idéntica a vuestro estándar estático
-  const rutaImagenFinal = `/comida/${nombreNormalizado}${extensionImagen.value}`
-
   try {
-    // 2. Extraemos el texto exacto de la categoría ('Entrantes', 'Niguiris') tal y como lo lee tu formulario
-    const categoriaTexto = selectedCategory.value.label.trim()
+    const categoriaFormateada = selectedCategory.value.label.trim()
 
-    // 🚀 CLONACIÓN DEL POSTMAN EXCELENTE:
-    // Construimos el JSON idéntico con las 4 propiedades estrictas que acepta el CreateProductoDto
+    // Automatización del nombre de la foto física para la descripción
+    const nombreNormalizado = name.value
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, '-') 
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
+    const rutaImagenFinal = `/comida/${nombreNormalizado}${extensionImagen.value}`
+
     const bodyPayload = {
       nombre: name.value.trim(),
-      precio: Number(price.value), // Forzamos número puro para evitar "The string camouflaged"
-      categoria: categoriaTexto,   // Mandamos 'Entrantes', 'Niguiris' en formato exacto
-      descripcion: rutaImagenFinal  // Guardamos la foto en la descripción como vuestra lógica exige
+      precio: Number(price.value),
+      categoria: categoriaFormateada,
+      descripcion: rutaImagenFinal
     }
 
-    console.log('🚀 Enviando réplica exacta de Postman al Gateway:', bodyPayload)
+    // 🚀 DECISIÓN DE RUTA: ¿POST (crear) o PUT (actualizar)?
+    const urlApi = isEditMode.value 
+      ? `https://ukiyocazorla.es/api/productos/${productId.value}`
+      : 'https://ukiyocazorla.es/api/productos'
+      
+    const metodoHttp = isEditMode.value ? 'PUT' : 'POST'
 
-    // 3. Petición directa libre de intermediarios o repositorios desactualizados
-    await $fetch('https://ukiyocazorla.es/api/productos', {
-      method: 'POST',
+    console.log(`📦 Enviando ${metodoHttp} al clúster:`, bodyPayload)
+
+    await $fetch(urlApi, {
+      method: metodoHttp,
       headers: { 
         'Content-Type': 'application/json',
         'Accept': 'application/json'
@@ -79,20 +114,17 @@ const handleGuardarPlato = async () => {
       body: bodyPayload
     })
 
-    // Si pasamos el Gateway, mostramos éxito
-    successMsg.value = '¡Plato gastronómico creado con éxito en Ukiyo!'
+    successMsg.value = isEditMode.value 
+      ? '¡Plato gastronómico actualizado con éxito!' 
+      : '¡Plato gastronómico creado con éxito!'
     
-    // Limpiamos los campos
-    name.value = ''
-    price.value = 0
-
     setTimeout(() => {
       navigateTo('/menu') 
     }, 1500)
 
   } catch (err: any) {
-    console.error('Error crítico al guardar el producto:', err)
-    errorMsg.value = err.data?.message || 'El Gateway rechazó el producto. Verifica el formato de validación.'
+    console.error('Error crítico en la operación del producto:', err)
+    errorMsg.value = err.data?.message || 'El Gateway rechazó la operación. Verifica los campos.'
   } finally {
     isLoading.value = false
   }
@@ -102,8 +134,12 @@ const handleGuardarPlato = async () => {
 <template>
   <div class="max-w-xl mx-auto pt-6 pb-12 px-4">
     <div class="mb-6">
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Nuevo Plato Ukiyo</h1>
-      <p class="text-gray-500 text-sm">Añade un producto vinculándolo automáticamente a la carpeta public/comida.</p>
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+        {{ isEditMode ? 'Editar Plato Ukiyo' : 'Nuevo Plato Ukiyo' }}
+      </h1>
+      <p class="text-gray-500 text-sm">
+        {{ isEditMode ? 'Modifica las propiedades del producto en tiempo real.' : 'Añade un producto vinculándolo automáticamente a la carpeta public/comida.' }}
+      </p>
     </div>
 
     <UCard>
@@ -133,7 +169,7 @@ const handleGuardarPlato = async () => {
           </div>
         </div>
 
-        <div>
+        <div v-if="!isEditMode">
           <label class="block text-xs font-bold uppercase text-gray-400 mb-2">Formato de la Foto</label>
           <URadioGroup
             v-model="extensionImagen"
@@ -154,7 +190,7 @@ const handleGuardarPlato = async () => {
         <div class="flex justify-end gap-2 pt-2">
           <UButton color="gray" variant="ghost" to="/menu" :disabled="isLoading">Cancelar</UButton>
           <UButton type="submit" color="amber" variant="solid" :loading="isLoading" class="font-bold uppercase tracking-wider text-xs px-4">
-            {{ isLoading ? 'Guardando...' : 'Crear Plato' }}
+            {{ isLoading ? 'Guardando...' : (isEditMode ? 'Actualizar Plato' : 'Crear Plato') }}
           </UButton>
         </div>
 

@@ -93,12 +93,13 @@ const deleteDish = async (id: string | undefined) => {
   }
 }
 
-// Configuración de las acciones por cada fila
+// 🌟 Configuración de las acciones por cada fila con Redirección a Edición Conectada
 const items = (row: Product) => [
   [{
     label: 'Editar',
     icon: 'i-heroicons-pencil-square-20-solid',
-    click: () => console.log('Editar', row.id)
+    // Redirige pasando el ID del plato por query params para activar el EditMode
+    click: () => navigateTo(`/menu/new?id=${row.id}`)
   }, {
     label: 'Borrar',
     icon: 'i-heroicons-trash-20-solid',
