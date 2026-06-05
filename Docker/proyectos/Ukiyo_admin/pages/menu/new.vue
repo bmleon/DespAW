@@ -10,7 +10,7 @@ const route = useRoute()
 const isEditMode = ref(false)
 const productId = ref('')
 
-// Estados del formulario
+// Estados originales del formulario
 const name = ref('')
 const price = ref(0)
 const extensionImagen = ref('.jpg')
@@ -37,7 +37,7 @@ const categories = [
 
 const selectedCategory = ref(categories[0])
 
-// 🌟 DETECTOR DE MODO: Si viene un ?id= en la URL, cargamos el plato para editar
+// DETECTOR DE MODO: Si viene un ?id= en la URL, precargamos el plato
 onMounted(async () => {
   if (route.query.id) {
     isEditMode.value = true
@@ -46,14 +46,13 @@ onMounted(async () => {
     
     try {
       console.log(`🔍 Cargando datos del producto ${productId.value} para editar...`)
-      // Pedimos los datos del plato específico al backend
       const producto = await $fetch<any>(`https://ukiyocazorla.es/api/productos/${productId.value}`)
       
       if (producto) {
         name.value = producto.nombre || ''
         price.value = Number(producto.precio) || 0
         
-        // Buscamos su categoría en nuestro array para seleccionarla en el desplegable
+        // Sincronizamos el selector visual con la categoría que viene del back
         const catEncontrada = categories.find(c => c.label.toUpperCase() === producto.categoria?.toUpperCase())
         if (catEncontrada) {
           selectedCategory.value = catEncontrada
@@ -79,7 +78,7 @@ const handleGuardarPlato = async () => {
   successMsg.value = ''
 
   try {
-    const categoriaFormateada = selectedCategory.value.label.trim()
+    const categoriaTexto = selectedCategory.value.label.trim()
 
     // Automatización del nombre de la foto física para la descripción
     const nombreNormalizado = name.value
@@ -92,16 +91,16 @@ const handleGuardarPlato = async () => {
     const bodyPayload = {
       nombre: name.value.trim(),
       precio: Number(price.value),
-      categoria: categoriaFormateada,
+      categoria: categoriaTexto,
       descripcion: rutaImagenFinal
     }
 
-    // 🚀 DECISIÓN DE RUTA: ¿POST (crear) o PUT (actualizar)?
+    // 🚀 DECISIÓN DE RUTA Y MÉTODO HTTP: POST para crear, PATCH para actualizar parcial en NestJS
     const urlApi = isEditMode.value 
       ? `https://ukiyocazorla.es/api/productos/${productId.value}`
       : 'https://ukiyocazorla.es/api/productos'
       
-    const metodoHttp = isEditMode.value ? 'PUT' : 'POST'
+    const metodoHttp = isEditMode.value ? 'PATCH' : 'POST'
 
     console.log(`📦 Enviando ${metodoHttp} al clúster:`, bodyPayload)
 
