@@ -20,7 +20,7 @@ interface UserItem {
 
 const users = ref<UserItem[]>([])
 const isLoadingTable = ref(false)
-const searchFilter = ref('') // 🌟 Estado reactivo para el buscador
+const searchFilter = ref('') 
 
 // Función para cargar los usuarios de forma asíncrona y real
 const loadUsers = async () => {
@@ -36,8 +36,7 @@ const loadUsers = async () => {
   }
 }
 
-// 🌟 PROPIEDAD COMPUTADA PARA FILTRAR EN TIEMPO REAL
-// Busca coincidencias tanto en el nombre de usuario como en el correo electrónico
+// PROPIEDAD COMPUTADA PARA FILTRAR EN TIEMPO REAL
 const filteredUsers = computed(() => {
   if (!searchFilter.value) return users.value
   
@@ -51,39 +50,62 @@ const filteredUsers = computed(() => {
 })
 
 // ==========================================
-// ESTADOS DE LA GESTIÓN DE ROLES
+// ESTADOS DE LA GESTIÓN DE ROLES (RESTRICCIÓN MASTER)
 // ==========================================
 const usuarioSeleccionadoId = ref('')
-const rolSeleccionado = ref('CLIENTE')
+const rolSeleccionado = ref('USER')
 const isProcessingRole = ref(false)
 
+// 🌟 Sincronizado al 100% con los ROLES reales del Seed de Fabricio
 const opcionesRoles = [
-  { value: 'CLIENTE', label: 'Cliente' },
-  { value: 'ADMIN', label: 'Administrador' },
-  { value: 'CAMARERO', label: 'Personal: Camarero' },
-  { value: 'COCINERO', label: 'Personal: Cocinero' },
-  { value: 'REPARTIDOR', label: 'Personal: Repartidor' }
+  { value: 'USER', label: 'Personal / Usuario Común (USER)' },
+  { value: 'ADMIN', label: 'Administrador General (ADMIN)' }
 ]
 
 const seleccionarUsuarioParaRol = (user: UserItem) => {
   usuarioSeleccionadoId.value = user.id
-  const r = user.role.toUpperCase()
-  rolSeleccionado.value = (r === 'CLIENTE' || r === 'CLIENT' || r === 'CLIENTE (LOCAL)' || r === 'USER') ? 'CLIENTE' : r
+  const r = user.role.toUpperCase().trim()
+  rolSeleccionado.value = (r === 'ADMIN' || r === 'ADMINISTRADOR') ? 'ADMIN' : 'USER'
 }
 
 const ejecutarCambioDeRol = async () => {
   if (!usuarioSeleccionadoId.value) return
   isProcessingRole.value = true
   
-  await userRepository.updateRole(usuarioSeleccionadoId.value, rolSeleccionado.value)
-  
-  const usuarioEnTabla = users.value.find(u => u.id === usuarioSeleccionadoId.value)
-  if (usuarioEnTabla) {
-    usuarioEnTabla.role = rolSeleccionado.value === 'CLIENTE' ? 'Cliente' : rolSeleccionado.value
-  }
+  try {
+    // 🚀 Payload relacional con la clave exacta que acepta la tabla Rol de PostgreSQL
+    const bodyPayload = {
+      roles: [
+        {
+          name: rolSeleccionado.value // Envia 'ADMIN' o 'USER'
+        }
+      ]
+    }
 
-  isProcessingRole.value = false
-  usuarioSeleccionadoId.value = ''
+    console.log('🔗 Actualizando relación N:M en base de datos:', bodyPayload)
+
+    await $fetch(`https://ukiyocazorla.es/api/usuarios/${usuarioSeleccionadoId.value}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: bodyPayload
+    })
+
+    const usuarioEnTabla = users.value.find(u => u.id === usuarioSeleccionadoId.value)
+    if (usuarioEnTabla) {
+      usuarioEnTabla.role = rolSeleccionado.value
+    }
+
+    console.log('✅ ¡Rol persistido con éxito en el clúster!')
+    usuarioSeleccionadoId.value = ''
+
+  } catch (error) {
+    console.error('❌ Error al mutar el rol relacional:', error)
+  } finally {
+    isProcessingRole.value = false
+  }
 }
 
 // ==========================================
@@ -96,7 +118,7 @@ const nuevoUsuario = ref({
   username: '',
   email: '',
   password: '',
-  roleValue: 'CAMARERO'
+  roleValue: 'USER'
 })
 
 const guardarNuevoUsuario = async () => {
@@ -104,16 +126,18 @@ const guardarNuevoUsuario = async () => {
   isSavingUser.value = true
 
   try {
-    let rolParaPintar = nuevoUsuario.value.roleValue;
-
     const bodyPayload = {
       username: nuevoUsuario.value.username.trim(),
       email: nuevoUsuario.value.email.trim(),
       password: nuevoUsuario.value.password,
-      roles: [] 
+      roles: [
+        {
+          name: nuevoUsuario.value.roleValue // Envía 'ADMIN' o 'USER'
+        }
+      ]
     };
 
-    console.log('🚀 Enviando payload blindado para bypass de roles:', bodyPayload);
+    console.log('🚀 Insertando usuario con mapeo relacional nativo:', bodyPayload);
 
     const response = await $fetch<any>('https://ukiyocazorla.es/api/usuarios', {
       method: 'POST',
@@ -130,10 +154,10 @@ const guardarNuevoUsuario = async () => {
       id: nuevoId,
       name: nuevoUsuario.value.username.trim(),
       email: nuevoUsuario.value.email.trim(),
-      role: rolParaPintar === 'CLIENTE' ? 'Cliente' : rolParaPintar
+      role: nuevoUsuario.value.roleValue
     });
 
-    nuevoUsuario.value = { username: '', email: '', password: '', roleValue: 'CAMARERO' }
+    nuevoUsuario.value = { username: '', email: '', password: '', roleValue: 'USER' }
     isOpenModal.value = false
     
   } catch (error: any) {
@@ -248,11 +272,10 @@ onMounted(async () => {
               <td class="p-4">
                 <span class="px-2.5 py-1 text-xs font-bold rounded-full uppercase tracking-wide"
                   :class="{
-                    'bg-red-50 dark:bg-red-950/30 text-red-500': user.role === 'ADMIN' || user.role === 'Administrador',
-                    'bg-blue-50 dark:bg-blue-950/30 text-blue-500': user.role === 'Cliente' || user.role === 'CLIENTE' || user.role === 'USER',
-                    'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-500': ['CAMARERO', 'COCINERO', 'REPARTIDOR'].includes(user.role.toUpperCase())
+                    'bg-red-50 dark:bg-red-950/30 text-red-500': user.role.toUpperCase() === 'ADMIN',
+                    'bg-blue-50 dark:bg-blue-950/30 text-blue-500': user.role.toUpperCase() === 'USER'
                   }">
-                  {{ user.role }}
+                  {{ user.role.toUpperCase() === 'ADMIN' ? 'ADMINISTRADOR' : 'EMPLEADO / USER' }}
                 </span>
               </td>
               <td class="p-4 text-right">
@@ -281,11 +304,11 @@ onMounted(async () => {
 
         <form @submit.prevent="guardarNuevoUsuario" class="space-y-4">
           <UFormGroup label="Nombre de Usuario (Username)" required>
-            <UInput v-model="nuevoUsuario.username" placeholder="ej: carlos.ukiyo" icon="i-heroicons-user" size="md" required />
+            <UInput v-model="nuevoUsuario.username" placeholder="ej: tribunal.dev" icon="i-heroicons-user" size="md" required />
           </UFormGroup>
 
           <UFormGroup label="Correo Electrónico" required>
-            <UInput v-model="nuevoUsuario.email" type="email" placeholder="ej: carlos@ukiyo.rest" icon="i-heroicons-envelope" size="md" required />
+            <UInput v-model="nuevoUsuario.email" type="email" placeholder="ej: tribunal@ukiyo.com" icon="i-heroicons-envelope" size="md" required />
           </UFormGroup>
 
           <UFormGroup label="Contraseña del Empleado" required>
