@@ -26,6 +26,7 @@ spec:
           value: "https://ukiyocazorla.es"
         # 🌟 ESTO ES LO QUE DESPIERTA A ARGOCD Y FUERZA LA DESCARGA DE LA IMAGEN NUEVA
         - name: FORCE_RESTART_FECHA
+          value: "06-Jun-2026_17-52"
           value: "05-Jun-2026_07-40"
           value: "05-Jun-2026_07-34"
           value: "04-Jun-2026_14-25"
