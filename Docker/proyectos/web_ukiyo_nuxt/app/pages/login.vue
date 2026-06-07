@@ -161,7 +161,7 @@ const handleSubmit = async () => {
           </div>
 
           <div>
-            <label class="block text-xs font-bold uppercase text-gray-400 mb-2">Email o Usuario</label>
+            <label class="block text-xs font-bold uppercase text-gray-400 mb-2">Usuario</label>
             <input v-model="identificador" type="text" required class="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-800 border-transparent focus:ring-2 focus:ring-ukiyo-gold outline-none text-gray-900 dark:text-white transition-all" />
           </div>
 
