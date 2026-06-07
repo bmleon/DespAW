@@ -136,6 +136,7 @@ onUnmounted(() => {
           </span>
         </NuxtLink>
 
+        <!-- Bloque de Login si no está autenticado -->
         <template v-if="!authStore.isAuthenticated">
           <NuxtLink :to="resolveRoute('/login')" class="hidden sm:flex items-center gap-2 px-5 py-2 rounded-full transition-all duration-300 font-bold uppercase text-[10px] tracking-widest bg-ukiyo-gold text-black hover:bg-zinc-900 hover:text-white dark:hover:bg-zinc-900 shadow-md hover:scale-105 active:scale-95">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -145,11 +146,12 @@ onUnmounted(() => {
           </NuxtLink>
         </template>
         
+        <!-- Bloque de Perfil si la sesión está activa -->
         <template v-else>
           <div class="hidden sm:flex items-center gap-3 ml-1 text-xs font-bold text-zinc-400 dark:text-zinc-600">
-            <div>
-              Mi Perfil (<span class="text-ukiyo-gold">{{ authStore.user?.profile?.username || 'belen' }}</span>)
-            </div>
+            <NuxtLink :to="resolveRoute('/perfil')" class="hover:text-ukiyo-gold transition-colors text-white dark:text-zinc-950 no-underline">
+              Mi Perfil (<span class="text-ukiyo-gold font-black">{{ authStore.user?.username || 'belen_dev' }}</span>)
+            </NuxtLink>
             <button @click="handleLogout" class="text-[10px] text-red-500 hover:text-red-400 dark:hover:text-red-700 uppercase tracking-widest font-black transition-colors cursor-pointer border border-red-500/30 px-2 py-0.5 rounded-md hover:bg-red-500/10">
               Salir
             </button>
@@ -163,6 +165,7 @@ onUnmounted(() => {
 
     </div>
 
+    <!-- Menú Desplegable Móvil -->
     <div v-show="isMenuOpen" class="md:hidden bg-zinc-950 dark:bg-[#fcfaf7] border-b border-zinc-900 dark:border-zinc-200 absolute w-full top-20 left-0 shadow-2xl transition-all z-50">
       <div class="px-4 pt-4 pb-8 flex flex-col items-center gap-1">
         <NuxtLink 
@@ -183,9 +186,9 @@ onUnmounted(() => {
           </NuxtLink>
         </template>
         <template v-else>
-          <span class="block px-3 py-1.5 text-xs font-bold text-zinc-500 uppercase tracking-widest">
-            Sesión: {{ authStore.user?.profile?.username || 'belen' }}
-          </span>
+          <NuxtLink :to="resolveRoute('/perfil')" class="block px-3 py-1.5 text-xs font-bold text-zinc-500 hover:text-ukiyo-gold uppercase tracking-widest text-center no-underline" @click="closeMenu">
+            Sesión: <span class="text-ukiyo-gold">{{ authStore.user?.username || 'belen_dev' }}</span>
+          </NuxtLink>
           <button @click="handleLogout" class="mobile-link-item text-red-500 font-black">
             Cerrar Sesión
           </button>
@@ -194,26 +197,28 @@ onUnmounted(() => {
     </div>
     
   </div>
+
+  <!-- Botón Scroll to Top -->
   <transition 
-      enter-active-class="transition duration-300 ease-out" 
-      enter-from-class="translate-y-10 opacity-0" 
-      enter-to-class="translate-y-0 opacity-100" 
-      leave-active-class="transition duration-200 ease-in" 
-      leave-from-class="translate-y-0 opacity-100" 
-      leave-to-class="translate-y-10 opacity-0"
+    enter-active-class="transition duration-300 ease-out" 
+    enter-from-class="translate-y-10 opacity-0" 
+    enter-to-class="translate-y-0 opacity-100" 
+    leave-active-class="transition duration-200 ease-in" 
+    leave-from-class="translate-y-0 opacity-100" 
+    leave-to-class="translate-y-10 opacity-0"
+  >
+    <button 
+      v-if="showScrollButton" 
+      @click="scrollToTop" 
+      class="fixed bottom-8 right-8 w-12 h-12 bg-ukiyo-gold text-black rounded-full shadow-2xl flex items-center justify-center z-[60] hover:bg-white hover:scale-110 transition-all active:scale-95" 
+      aria-label="Volver arriba"
     >
-      <button 
-        v-if="showScrollButton" 
-        @click="scrollToTop" 
-        class="fixed bottom-8 right-8 w-12 h-12 bg-ukiyo-gold text-black rounded-full shadow-2xl flex items-center justify-center z-[60] hover:bg-white hover:scale-110 transition-all active:scale-95" 
-        aria-label="Volver arriba"
-      >
-        <svg xmlns="http://www.w3.org/2000/xl" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-          <path d="m5 12 7-7 7 7"/>
-          <path d="M12 19V5"/>
-        </svg>
-      </button>
-    </transition>
+      <svg xmlns="http://www.w3.org/2000/xl" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m5 12 7-7 7 7"/>
+        <path d="M12 19V5"/>
+      </svg>
+    </button>
+  </transition>
 </template>
 
 <style scoped lang="postcss">
