@@ -34,6 +34,9 @@ const toggleAuth = () => {
   isLogin.value = !isLogin.value;
   errorMessage.value = '';
   successMessage.value = '';
+  identificador.value = '';
+  password.value = '';
+  name.value = '';
 };
 
 const handleSubmit = async () => {
@@ -155,19 +158,22 @@ const handleSubmit = async () => {
         </div>
 
         <form @submit.prevent="handleSubmit" class="space-y-5">
+          
           <div v-if="!isLogin">
             <label class="block text-xs font-bold uppercase text-gray-400 mb-2">Nombre de Usuario</label>
-            <input v-model="name" type="text" required class="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-800 border-transparent focus:ring-2 focus:ring-ukiyo-gold outline-none text-gray-900 dark:text-white transition-all" />
+            <input v-model="name" type="text" :required="!isLogin" class="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-800 border-transparent focus:ring-2 focus:ring-ukiyo-gold outline-none text-gray-900 dark:text-white transition-all" placeholder="ej: profesor.amador" />
           </div>
 
           <div>
-            <label class="block text-xs font-bold uppercase text-gray-400 mb-2">Usuario</label>
-            <input v-model="identificador" type="text" required class="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-800 border-transparent focus:ring-2 focus:ring-ukiyo-gold outline-none text-gray-900 dark:text-white transition-all" />
+            <label class="block text-xs font-bold uppercase text-gray-400 mb-2">
+              {{ isLogin ? 'Usuario o Correo' : 'Correo Electrónico' }}
+            </label>
+            <input v-model="identificador" type="text" required class="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-800 border-transparent focus:ring-2 focus:ring-ukiyo-gold outline-none text-gray-900 dark:text-white transition-all" :placeholder="isLogin ? 'Nombre de usuario o email' : 'ej: profesor@ukiyo.com'" />
           </div>
 
           <div>
             <label class="block text-xs font-bold uppercase text-gray-400 mb-2">Contraseña</label>
-            <input v-model="password" type="password" required class="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-800 border-transparent focus:ring-2 focus:ring-ukiyo-gold outline-none text-gray-900 dark:text-white transition-all" />
+            <input v-model="password" type="password" required class="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-800 border-transparent focus:ring-2 focus:ring-ukiyo-gold outline-none text-gray-900 dark:text-white transition-all" placeholder="••••••••" />
           </div>
 
           <div v-if="errorMessage" class="text-red-500 text-xs font-bold text-center bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-100 dark:border-red-800">
