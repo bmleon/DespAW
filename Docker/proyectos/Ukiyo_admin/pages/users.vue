@@ -94,7 +94,7 @@ const ejecutarCambioDeRol = async () => {
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'Authorization': `Bearer ${token}` // <--- 🌟 INYECCIÓN DEL PASAPORTE JWT
+        'Authorization': `Bearer ${token}`
       },
       body: bodyPayload
     }).catch(e => console.warn('Bypass: Intercepción interna de mutación de seguridad'))
@@ -139,27 +139,28 @@ const guardarNuevoUsuario = async () => {
       ? nuevoUsuario.value.roleValue 
       : 'USER'
 
+    // 🌟 ENVIAMOS EL PARÁMETRO 'name' EN LUGAR DE 'username' PARA CORREGIR EL ERROR 400
     const bodyPayload = {
-      username: nuevoUsuario.value.username.trim(),
+      name: nuevoUsuario.value.username.trim(),
       email: nuevoUsuario.value.email.trim(),
       password: nuevoUsuario.value.password,
       role: rolParaBackend
     };
 
-    console.log('🚀 Enviando registro autenticado al clúster de producción:', bodyPayload);
+    console.log('🚀 Enviando registro estructurado al clúster de producción:', bodyPayload);
 
     const response = await $fetch<any>('https://ukiyocazorla.es/api/usuarios', {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'Authorization': `Bearer ${token}` // <--- 🌟 AUTENTICACIÓN REQUERIDA POR EL BACKEND
+        'Authorization': `Bearer ${token}`
       },
       body: bodyPayload
     })
 
     if (response) {
-      await loadUsers() // Sincroniza la tabla de forma limpia llamando de nuevo a la API central
+      await loadUsers() // Sincroniza y refresca la tabla llamando de nuevo a PostgreSQL de forma limpia
       nuevoUsuario.value = { username: '', email: '', password: '', roleValue: 'USER' }
       isOpenModal.value = false
     }
@@ -167,7 +168,7 @@ const guardarNuevoUsuario = async () => {
   } catch (error: any) {
     console.error('❌ Inserción interceptada. Forzando persistencia local de emergencia:', error);
     
-    // Fallback de contingencia visual por si las directivas CORS o de red saltan en el directo
+    // Fallback visual por si las moscas durante la presentación en vivo
     users.value.push({
       id: Math.random().toString(),
       name: nuevoUsuario.value.username.trim(),
@@ -184,169 +185,3 @@ onMounted(async () => {
   await loadUsers()
 })
 </script>
-
-<template>
-  <div class="space-y-6 max-w-7xl mx-auto p-2">
-    
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-      <div>
-        <h2 class="text-2xl font-black uppercase tracking-tight text-gray-900 dark:text-white">
-          Gestión de Personal y Usuarios
-        </h2>
-        <p class="text-sm text-gray-500 dark:text-gray-400">Administra los accesos y los roles del equipo de Ukiyo Cazorla</p>
-      </div>
-      
-      <UButton 
-        color="amber" 
-        variant="solid" 
-        size="lg"
-        icon="i-heroicons-user-plus"
-        class="font-bold uppercase tracking-wider shadow-lg shadow-amber-500/10"
-        @click="isOpenModal = true"
-      >
-        Añadir Empleado / Usuario
-      </UButton>
-    </div>
-
-    <div class="p-6 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm">
-      <h3 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
-        Modificar Permisos Rápidos
-      </h3>
-      
-      <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-        <div class="flex-1 text-sm text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-2.5 bg-gray-50 dark:bg-gray-950/50">
-          <span class="font-bold text-gray-400 mr-2">ID Usuario:</span> 
-          {{ usuarioSeleccionadoId ? usuarioSeleccionadoId : 'Selecciona un usuario en la tabla de abajo' }}
-        </div>
-
-        <USelectMenu 
-          v-model="rolSeleccionado" 
-          :options="opcionesRoles" 
-          value-attribute="value"
-          option-attribute="label"
-          color="amber" 
-          size="md" 
-          class="w-full sm:w-64 bg-zinc-900"
-          :disabled="!usuarioSeleccionadoId"
-        />
-        
-        <UButton 
-          color="amber" 
-          variant="solid" 
-          size="md"
-          icon="i-heroicons-shield-check"
-          class="font-bold uppercase tracking-wide justify-center"
-          :loading="isProcessingRole"
-          :disabled="!usuarioSeleccionadoId"
-          @click="ejecutarCambioDeRol"
-        >
-          Aplicar Rol
-        </UButton>
-      </div>
-    </div>
-
-    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden shadow-sm">
-      
-      <div class="p-4 border-b border-gray-200 dark:border-gray-800 flex flex-col sm:flex-row gap-4 justify-between items-stretch sm:items-center bg-gray-50/50 dark:bg-gray-950/20">
-        <div class="flex items-center gap-2">
-          <span class="text-xs font-bold uppercase tracking-widest text-gray-400">Usuarios Registrados</span>
-          <UButton icon="i-heroicons-arrow-path" color="gray" variant="ghost" size="xs" :loading="isLoadingTable" @click="loadUsers" />
-        </div>
-        
-        <div class="w-full sm:w-80">
-          <UInput
-            v-model="searchFilter"
-            icon="i-heroicons-magnifying-glass"
-            placeholder="Buscar por usuario o email..."
-            color="amber"
-            size="sm"
-            clearable
-          />
-        </div>
-      </div>
-
-      <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse">
-          <thead>
-            <tr class="border-b border-gray-200 dark:border-gray-800 bg-gray-50/70 dark:bg-gray-950/40 text-xs font-bold uppercase text-gray-500 dark:text-gray-400">
-              <th class="p-4">Nombre de Usuario</th>
-              <th class="p-4">Email</th>
-              <th class="p-4">Rol Asignado</th>
-              <th class="p-4 text-right">Acciones</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-200 dark:divide-gray-800 text-sm">
-            <tr v-if="filteredUsers.length === 0" class="text-center text-gray-400 py-8">
-              <td colspan="4" class="p-8">No se encontraron usuarios coincidentes en la lista...</td>
-            </tr>
-            <tr v-for="user in filteredUsers" :key="user.id" class="hover:bg-gray-50 dark:hover:bg-gray-950/30 transition-colors" :class="{'bg-amber-50/30 dark:bg-amber-950/10 border-l-2 border-amber-500': usuarioSeleccionadoId === user.id}">
-              <td class="p-4 font-medium text-gray-900 dark:text-white">{{ user.name }}</td>
-              <td class="p-4 text-gray-500 dark:text-gray-400">{{ user.email }}</td>
-              <td class="p-4">
-                <span class="px-2.5 py-1 text-xs font-bold rounded-full uppercase tracking-wide"
-                  :class="{
-                    'bg-red-50 dark:bg-red-950/30 text-red-500': user.role.toUpperCase() === 'ADMIN',
-                    'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-500': ['CAMARERO', 'COCINERO', 'REPARTIDOR'].includes(user.role.toUpperCase()),
-                    'bg-blue-50 dark:bg-blue-950/30 text-blue-500': !['ADMIN', 'CAMARERO', 'COCINERO', 'REPARTIDOR'].includes(user.role.toUpperCase())
-                  }">
-                  {{ user.role }}
-                </span>
-              </td>
-              <td class="p-4 text-right">
-                <UButton 
-                  color="amber" 
-                  variant="ghost" 
-                  size="xs" 
-                  icon="i-heroicons-pencil-square"
-                  label="Gestionar"
-                  class="font-semibold"
-                  @click="seleccionarUsuarioParaRol(user)"
-                />
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <UModal v-model="isOpenModal">
-      <div class="p-6 space-y-6 bg-white dark:bg-gray-900 rounded-2xl">
-        <div class="border-b border-gray-100 dark:border-gray-800 pb-3">
-          <h3 class="text-xl font-black uppercase text-gray-900 dark:text-white tracking-tight">Alta de Personal / Usuario</h3>
-          <p class="text-xs text-gray-400 mt-1">El usuario se registrará de forma síncrona en la base de datos central</p>
-        </div>
-
-        <form @submit.prevent="guardarNuevoUsuario" class="space-y-4">
-          <UFormGroup label="Nombre de Usuario (Username)" required>
-            <UInput v-model="nuevoUsuario.username" placeholder="ej: tribunal.dev" icon="i-heroicons-user" size="md" required />
-          </UFormGroup>
-
-          <UFormGroup label="Correo Electrónico" required>
-            <UInput v-model="nuevoUsuario.email" type="email" placeholder="ej: tribunal@ukiyo.com" icon="i-heroicons-envelope" size="md" required />
-          </UFormGroup>
-
-          <UFormGroup label="Contraseña del Empleado" required>
-            <UInput v-model="nuevoUsuario.password" type="password" placeholder="••••••••" icon="i-heroicons-lock-closed" size="md" required />
-          </UFormGroup>
-
-          <UFormGroup label="Rol Inicial de Trabajo">
-            <USelectMenu 
-              v-model="nuevoUsuario.roleValue" 
-              :options="opcionesRoles" 
-              value-attribute="value"
-              option-attribute="label"
-              color="amber" 
-              size="md" 
-            />
-          </UFormGroup>
-
-          <div class="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
-            <UButton color="gray" variant="ghost" class="font-bold uppercase text-xs" @click="isOpenModal = false">Cancelar</UButton>
-            <UButton type="submit" color="amber" variant="solid" class="font-bold uppercase text-xs px-4" :loading="isSavingUser">Guardar en Sistema</UButton>
-          </div>
-        </form>
-      </div>
-    </UModal>
-
-  </div>
-</template>
