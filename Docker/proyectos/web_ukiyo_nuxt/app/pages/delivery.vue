@@ -54,10 +54,22 @@ const categories = [
   { id: 'suplementos', name: 'Suplementos' },
 ];
 
-// --- LÓGICA DE FILTRADO ---
+// --- LÓGICA DE FILTRADO INTELIGENTE (CORREGIDO) ---
 const filteredProducts = computed(() => {
   if (selectedCategory.value === 'all') return menuItems.value;
-  return menuItems.value.filter(p => p.categoria?.toLowerCase() === selectedCategory.value.toLowerCase());
+  
+  // Limpiamos el ID del botón seleccionado: pasamos a minúsculas y quitamos la 's' final si la tiene
+  const filtroLimpio = selectedCategory.value.toLowerCase().trim().replace(/s$/, '');
+
+  return menuItems.value.filter(p => {
+    if (!p.categoria) return false;
+    
+    // Limpiamos la categoría que viene de la base de datos de la misma manera
+    const categoriaBDLimpia = p.categoria.toLowerCase().trim().replace(/s$/, '');
+    
+    // Emparejamos de forma flexible (ej: "hosomakis" coincidirá con "hosomaki")
+    return categoriaBDLimpia === filtroLimpio;
+  });
 });
 
 // --- FUNCIÓN PARA AÑADIR AL CARRITO ---
@@ -122,11 +134,11 @@ const addToCart = (product: Plato) => {
     </div>
 
     <div class="flex-grow max-w-7xl mx-auto px-4">
-      <div v-if="isLoading" class="flex flex-col items-center justify-center py-20 text-ukiyo-gold">
+      <div class="flex flex-col items-center justify-center py-20 text-ukiyo-gold" v-if="isLoading">
         <span class="animate-pulse text-xl uppercase font-black tracking-widest">Cargando carta de la BD...</span>
       </div>
 
-      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" v-else-if="filteredProducts.length > 0">
         <div 
           v-for="product in filteredProducts" 
           :key="product.id"
@@ -169,16 +181,16 @@ const addToCart = (product: Plato) => {
                  class="w-full py-3.5 bg-ukiyo-gold text-black rounded-xl font-black uppercase tracking-widest text-xs transition-all duration-300 flex items-center justify-center gap-2 hover:bg-white hover:shadow-xl hover:-translate-y-0.5 active:scale-95"
                >
                  <span>Añadir al pedido</span>
-                 <svg xmlns="http://www.w3.org/2000/xl" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                </button>
             </div>
           </div>
         </div>
       </div>
-    </div>
-    
-    <div v-if="filteredProducts.length === 0 && !isLoading" class="text-center py-12 text-gray-400 italic">
-      No hay platos disponibles en esta categoría en este momento.
+
+      <div v-if="filteredProducts.length === 0 && !isLoading" class="text-center py-20 text-gray-400 italic font-medium bg-white dark:bg-ukiyo-nav rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm max-w-2xl mx-auto px-4">
+        No hay platos disponibles en la categoría {{ categories.find(c => c.id === selectedCategory)?.name }} en este momento.
+      </div>
     </div>
 
   </div>
