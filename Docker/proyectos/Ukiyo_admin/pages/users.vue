@@ -118,12 +118,12 @@ const eliminarUsuarioDeLaVista = (userId: string, userName: string) => {
   
   if (confirmar) {
     users.value = users.value.filter(user => user.id !== userId);
-    console.log(`🔒 Borrado lógico simulado para el usuario ${userId}. Datos preservados de forma segura en la base de datos.`);
+    console.log(`🔒 Borrado lógico simulado para el usuario ${userId}. Datos preservados en PostgreSQL.`);
   }
 }
 
 // ==========================================
-// ALTA DE NUEVO EMPLEADO (HÍBRIDO ANTIFALLOS)
+// ALTA DE NUEVO EMPLEADO (100% OFICIAL EN BD)
 // ==========================================
 const isOpenModal = ref(false)
 const isSavingUser = ref(false)
@@ -142,14 +142,14 @@ const guardarNuevoUsuario = async () => {
   const token = useCookie('auth_token').value || (typeof window !== 'undefined' ? localStorage.getItem('token') : null)
 
   try {
-    // 🚀 AJUSTE DE PAYLOAD: Volvemos al formato exacto que tu tienda sí valida bien
+    // 🚀 PAYLOAD CLONADO DE LA TIENDA: Solo los campos validados por el DTO
     const bodyPayload = {
       username: nuevoUsuario.value.username.trim(),
       email: nuevoUsuario.value.email.trim().toLowerCase(),
       password: nuevoUsuario.value.password
     };
 
-    console.log('🚀 Intentando inserción síncrona en la Base de Datos:', bodyPayload);
+    console.log('🚀 Lanzando petición oficial idéntica a la tienda cliente:', bodyPayload);
 
     const response = await $fetch<any>('https://ukiyocazorla.es/api/usuarios', {
       method: 'POST',
@@ -161,32 +161,18 @@ const guardarNuevoUsuario = async () => {
       body: bodyPayload
     })
 
-    if (response) {
-      console.log('✅ Registrado en PostgreSQL con éxito.');
-      await loadUsers() // Refrescamos la tabla con los datos de la base de datos
-    } else {
-      // Si pasa el fetch pero no hay respuesta limpia, forzamos inserción local
-      throw new Error('Respuesta asíncrona parcial');
-    }
+    console.log('✅ ¡Insertado con éxito real en la base de datos central!', response);
+    
+    // Refrescamos la tabla consultando la BD relacional
+    await loadUsers()
     
     nuevoUsuario.value = { username: '', email: '', password: '', roleValue: 'USER' }
     isOpenModal.value = false
 
   } catch (error: any) {
-    console.warn('⚠️ El backend devolvió validación estricta. Activando persistencia local de contingencia profesional para la demo.');
-    
-    // 🌟 SEGURO DE VIDA PARA LA PRESENTACIÓN: 
-    // Si la API se resiste por validaciones internas, lo insertamos localmente en caliente.
-    // El modal se cierra, el usuario se pinta en la tabla y la demo sigue impecable sin alertas ni bloqueos.
-    users.value.push({
-      id: 'local_' + Math.random().toString(36).substr(2, 9),
-      name: nuevoUsuario.value.username.trim(),
-      email: nuevoUsuario.value.email.trim(),
-      role: nuevoUsuario.value.roleValue
-    });
-
-    nuevoUsuario.value = { username: '', email: '', password: '', roleValue: 'USER' }
-    isOpenModal.value = false
+    console.error('❌ Error real devuelto por NestJS:', error.response?._data || error);
+    const mensajeErrorSvr = error.response?._data?.message || 'Error de validación 400';
+    alert(`El servidor rechazó el alta. Motivo: ${Array.isArray(mensajeErrorSvr) ? mensajeErrorSvr.join(', ') : mensajeErrorSvr}`);
   } finally {
     isSavingUser.value = false
   }
@@ -371,3 +357,6 @@ onMounted(async () => {
 
   </div>
 </template>
+
+<style scoped>
+</style>
