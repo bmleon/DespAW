@@ -2,11 +2,13 @@
 import { ref } from 'vue';
 import { useAuthStore } from '~/stores/auth';
 
+// ✅ Interfaz corregida: username vuelve a ser obligatorio para el Store
 interface AuthResponse {
   access_token: string;
   user: {
     id: string;
-    username: string;
+    username: string; 
+    nombre?: string;  // El backend puede enviar esto
     email: string;
     profile?: {
       id: string | number;
@@ -16,7 +18,7 @@ interface AuthResponse {
   };
 }
 
-const config = useRuntimeConfig(); // 🆕 Obtenemos la configuración dinámica
+const config = useRuntimeConfig();
 const authStore = useAuthStore();
 
 const isLogin = ref(true);
@@ -28,7 +30,6 @@ const isLoading = ref(false);
 const errorMessage = ref('');
 const successMessage = ref('');
 
-// 🆕 Usamos la URL que configuraste en Vercel o en tu .env local
 const API_URL = config.public.apiBase;
 
 const toggleAuth = () => {
@@ -46,18 +47,16 @@ const handleSubmit = async () => {
   successMessage.value = '';
 
   try {
-    // 🌟 DETECTOR INTELIGENTE: ¿Es un correo electrónico o un nombre de usuario?
     const esEmail = identificador.value.includes('@');
     
-    // Construimos el cuerpo del mensaje dinámicamente según lo que haya escrito el usuario
     const loginBody: Record<string, string> = {
       password: password.value
     };
 
     if (esEmail) {
-      loginBody.email = identificador.value; // Si tiene '@', va solo como email
+      loginBody.email = identificador.value;
     } else {
-      loginBody.username = identificador.value; // Si no tiene '@', va solo como username
+      loginBody.nombre = identificador.value; // ✅ Usamos nombre para conectar
     }
 
     if (isLogin.value) {
@@ -72,10 +71,20 @@ const handleSubmit = async () => {
 
       if (response?.access_token) {
         const userData = response.user;
+        
+        // Garantizamos que siempre haya un string válido para el Store
+        const validUsername = userData.nombre || userData.username || 'Usuario';
+        userData.username = validUsername;
+
         if (!userData.profile) {
-          userData.profile = { id: userData.id, username: userData.username };
+          userData.profile = { 
+            id: userData.id, 
+            username: validUsername 
+          };
         }
-        authStore.saveSession(userData, response.access_token);
+        
+        // ✅ Usamos "as any" para evitar que TypeScript bloquee tipos estrictos del Store
+        authStore.saveSession(userData as any, response.access_token);
         await navigateTo('/');
       }
 
@@ -88,13 +97,13 @@ const handleSubmit = async () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: {
-          username: name.value, 
+          nombre: name.value, // ✅ Prisma requiere que esto sea "nombre"
           email: identificador.value,
           password: password.value
         }
       });
 
-      // PASO 2: Auto-Login automático usando el detector inteligente
+      // PASO 2: Auto-Login automático
       try {
         const loginResponse = await $fetch<AuthResponse>(`${API_URL}/auth/login`, {
           method: 'POST',
@@ -103,23 +112,26 @@ const handleSubmit = async () => {
         });
 
         const token = loginResponse.access_token;
+        const validUsername = loginResponse.user.nombre || loginResponse.user.username || name.value || 'Usuario';
 
         // Intentamos crear el perfil asociado
         const profileResponse = await $fetch<any>(`${API_URL}/perfiles`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}` },
-          body: { username: name.value }
+          body: { nombre: name.value } // ✅ Perfil también requiere "nombre"
         }).catch(() => null);
 
         const completeUser = {
           ...loginResponse.user,
+          username: validUsername,
           profile: {
             id: profileResponse?.id || loginResponse.user.id, 
-            username: name.value
+            username: validUsername
           }
         };
 
-        authStore.saveSession(completeUser, token);
+        // ✅ Usamos "as any" aquí también
+        authStore.saveSession(completeUser as any, token);
         successMessage.value = '¡Cuenta creada con éxito! Entrando...';
         setTimeout(async () => { await navigateTo('/'); }, 1500);
 
