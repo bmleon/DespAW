@@ -16,6 +16,7 @@ interface AuthResponse {
   };
 }
 
+const config = useRuntimeConfig(); // 🆕 Obtenemos la configuración dinámica
 const authStore = useAuthStore();
 
 const isLogin = ref(true);
@@ -27,8 +28,8 @@ const isLoading = ref(false);
 const errorMessage = ref('');
 const successMessage = ref('');
 
-// URL oficial de producción con HTTPS
-const API_URL = 'https://ukiyocazorla.es/api';
+// 🆕 Usamos la URL que configuraste en Vercel o en tu .env local
+const API_URL = config.public.apiBase;
 
 const toggleAuth = () => {
   isLogin.value = !isLogin.value;

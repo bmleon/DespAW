@@ -18,7 +18,7 @@ export class ApiMenuRepository implements MenuRepository {
       if (!Array.isArray(data)) return [];
 
       // Dominio oficial de la tienda donde SÍ existe la carpeta public/comida
-      const dominioTienda = 'https://tienda.ukiyocazorla.es';
+      const dominioTienda = 'https://web-ukiyo.vercel.app';
 
       return data.map((item: any) => {
         const precioNumerico = Number(item.precio) || 0;
