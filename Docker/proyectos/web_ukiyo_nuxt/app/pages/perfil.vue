@@ -2,8 +2,11 @@
 import { ref, onMounted } from 'vue';
 import { useAuthStore } from '~/stores/auth';
 
+const config = useRuntimeConfig(); // 🆕 Obtenemos la configuración dinámica
 const authStore = useAuthStore();
-const API_URL = 'https://ukiyocazorla.es/api';
+
+// 🆕 Usamos la URL que configuraste en Vercel o en tu .env local
+const API_URL = config.public.apiBase;
 
 // Campos del formulario
 const username = ref('');
