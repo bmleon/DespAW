@@ -9,7 +9,12 @@ export interface UserProfile {
 export interface User {
   id: string;
   username?: string;
+  nombre?: string;      // Nombre real que devuelve el backend (tabla usuarios)
+  apellidos?: string;
   email: string;
+  rol?: string;
+  telefono?: string;
+  direccion?: string;
   profile?: UserProfile;
 }
 

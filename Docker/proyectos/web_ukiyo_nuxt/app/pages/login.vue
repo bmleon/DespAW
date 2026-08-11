@@ -2,18 +2,21 @@
 import { ref } from 'vue';
 import { useAuthStore } from '~/stores/auth';
 
-// ✅ Interfaz corregida: username vuelve a ser obligatorio para el Store
+// ✅ Interfaz alineada con lo que ahora devuelve el backend (campo "user")
 interface AuthResponse {
   access_token: string;
   user: {
     id: string;
-    username: string; 
-    nombre?: string;  // El backend puede enviar esto
+    nombre: string;
+    apellidos?: string;
     email: string;
+    rol: string;
+    telefono?: string;
+    direccion?: string;
+    username?: string; // lo rellenamos nosotros en el front para el Store
     profile?: {
       id: string | number;
       username: string;
-      avatarUrl?: string;
     };
   };
 }
@@ -22,7 +25,7 @@ const config = useRuntimeConfig();
 const authStore = useAuthStore();
 
 const isLogin = ref(true);
-const identificador = ref(''); 
+const identificador = ref('');
 const password = ref('');
 const name = ref('');
 
@@ -48,7 +51,8 @@ const handleSubmit = async () => {
 
   try {
     const esEmail = identificador.value.includes('@');
-    
+
+    // El backend ahora acepta login por "email" O por "nombre"
     const loginBody: Record<string, string> = {
       password: password.value
     };
@@ -56,7 +60,7 @@ const handleSubmit = async () => {
     if (esEmail) {
       loginBody.email = identificador.value;
     } else {
-      loginBody.nombre = identificador.value; // ✅ Usamos nombre para conectar
+      loginBody.nombre = identificador.value;
     }
 
     if (isLogin.value) {
@@ -71,67 +75,57 @@ const handleSubmit = async () => {
 
       if (response?.access_token) {
         const userData = response.user;
-        
+
         // Garantizamos que siempre haya un string válido para el Store
-        const validUsername = userData.nombre || userData.username || 'Usuario';
+        const validUsername = userData.nombre || 'Usuario';
         userData.username = validUsername;
 
         if (!userData.profile) {
-          userData.profile = { 
-            id: userData.id, 
-            username: validUsername 
+          userData.profile = {
+            id: userData.id,
+            username: validUsername
           };
         }
-        
-        // ✅ Usamos "as any" para evitar que TypeScript bloquee tipos estrictos del Store
+
         authStore.saveSession(userData as any, response.access_token);
         await navigateTo('/');
       }
 
     } else {
       // ==========================================
-      // FLUJO 2: REGISTRO ORQUESTADO
+      // FLUJO 2: REGISTRO
       // ==========================================
       // PASO 1: Creación de la cuenta en la BD
       await $fetch(`${API_URL}/usuarios`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: {
-          nombre: name.value, // ✅ Prisma requiere que esto sea "nombre"
+          nombre: name.value,
           email: identificador.value,
           password: password.value
         }
       });
 
-      // PASO 2: Auto-Login automático
+      // PASO 2: Auto-Login automático (ya NO se crea perfil aparte,
+      // los datos del "perfil" viven directamente en la tabla usuarios)
       try {
         const loginResponse = await $fetch<AuthResponse>(`${API_URL}/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: loginBody
+          body: { email: identificador.value, password: password.value }
         });
 
         const token = loginResponse.access_token;
-        const validUsername = loginResponse.user.nombre || loginResponse.user.username || name.value || 'Usuario';
+        const userData = loginResponse.user;
+        const validUsername = userData.nombre || name.value || 'Usuario';
 
-        // Intentamos crear el perfil asociado
-        const profileResponse = await $fetch<any>(`${API_URL}/perfiles`, {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` },
-          body: { nombre: name.value } // ✅ Perfil también requiere "nombre"
-        }).catch(() => null);
-
-        const completeUser = {
-          ...loginResponse.user,
-          username: validUsername,
-          profile: {
-            id: profileResponse?.id || loginResponse.user.id, 
-            username: validUsername
-          }
+        userData.username = validUsername;
+        userData.profile = {
+          id: userData.id,
+          username: validUsername
         };
 
-        // ✅ Usamos "as any" aquí también
-        authStore.saveSession(completeUser as any, token);
+        authStore.saveSession(userData as any, token);
         successMessage.value = '¡Cuenta creada con éxito! Entrando...';
         setTimeout(async () => { await navigateTo('/'); }, 1500);
 
@@ -143,14 +137,14 @@ const handleSubmit = async () => {
     }
   } catch (error: any) {
     console.error('Error principal:', error);
-    
+
     let msg = error.data?.message || 'Error al procesar la solicitud.';
     if (Array.isArray(msg)) msg = msg.join(', ');
 
     if (typeof msg === 'string' && msg.includes('UniqueConstraintViolation')) {
       msg = 'Ese correo electrónico ya está registrado. Por favor, inicia sesión.';
     }
-    
+
     errorMessage.value = msg;
   } finally {
     isLoading.value = false;
@@ -162,7 +156,7 @@ const handleSubmit = async () => {
   <div class="min-h-screen flex items-center justify-center px-4 bg-gray-50 dark:bg-ukiyo-dark">
     <div class="max-w-md w-full">
       <div class="bg-white dark:bg-ukiyo-nav p-8 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-800">
-        
+
         <div class="text-center mb-8">
           <h2 class="text-3xl font-black text-gray-900 dark:text-white uppercase tracking-tighter">
             {{ isLogin ? 'Identifícate' : 'Registro' }}
@@ -171,7 +165,7 @@ const handleSubmit = async () => {
         </div>
 
         <form @submit.prevent="handleSubmit" class="space-y-5">
-          
+
           <div v-if="!isLogin">
             <label class="block text-xs font-bold uppercase text-gray-400 mb-2">Nombre de Usuario</label>
             <input v-model="name" type="text" :required="!isLogin" class="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-800 border-transparent focus:ring-2 focus:ring-ukiyo-gold outline-none text-gray-900 dark:text-white transition-all" placeholder="ej: profesor.amador" />
@@ -192,7 +186,7 @@ const handleSubmit = async () => {
           <div v-if="errorMessage" class="text-red-500 text-xs font-bold text-center bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-100 dark:border-red-800">
             {{ errorMessage }}
           </div>
-          
+
           <div v-if="successMessage" class="text-green-500 text-xs font-bold text-center bg-green-50 dark:bg-green-900/20 p-3 rounded-lg border border-green-100 dark:border-green-800">
             {{ successMessage }}
           </div>

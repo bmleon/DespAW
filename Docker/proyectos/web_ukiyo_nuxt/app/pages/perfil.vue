@@ -2,14 +2,13 @@
 import { ref, onMounted } from 'vue';
 import { useAuthStore } from '~/stores/auth';
 
-const config = useRuntimeConfig(); // 🆕 Obtenemos la configuración dinámica
+const config = useRuntimeConfig();
 const authStore = useAuthStore();
 
-// 🆕 Usamos la URL que configuraste en Vercel o en tu .env local
 const API_URL = config.public.apiBase;
 
 // Campos del formulario
-const username = ref('');
+const username = ref(''); // se guarda en el campo "nombre" de la tabla usuarios
 const email = ref('');
 const password = ref('');
 
@@ -23,7 +22,7 @@ onMounted(() => {
   if (!authStore.isAuthenticated) {
     navigateTo('/login');
   } else {
-    username.value = authStore.user?.profile?.username || authStore.user?.username || '';
+    username.value = authStore.user?.nombre || authStore.user?.profile?.username || authStore.user?.username || '';
     email.value = authStore.user?.email || '';
   }
 });
@@ -42,39 +41,29 @@ const updateProfile = async () => {
     const userId = authStore.user?.id;
     if (!userId) throw new Error("No se pudo identificar al usuario.");
 
-    // 1. Actualizar datos de usuario (Email/Password)
-    const bodyUsuario: any = { email: email.value };
+    // Todo (nombre + email + password) se actualiza en un único PATCH a /usuarios/:id,
+    // ya que el "perfil" vive dentro de la propia tabla usuarios (no hay módulo /perfiles aparte)
+    const bodyUsuario: any = {
+      nombre: username.value,
+      email: email.value
+    };
+
     if (password.value.trim() !== '') {
       bodyUsuario.password = password.value;
     }
 
-    await $fetch(`${API_URL}/usuarios/${userId}`, {
+    const usuarioActualizado = await $fetch<any>(`${API_URL}/usuarios/${userId}`, {
       method: 'PATCH',
       headers,
       body: bodyUsuario
     });
 
-    // 2. Actualizar identidad en Perfil (Cumpliendo el DTO)
-    // Dividimos el username en nombre y apellido para el DTO
-    const partesNombre = username.value.split(' ');
-    const nombre = partesNombre[0] || 'Usuario';
-    const apellido = partesNombre.slice(1).join(' ') || 'Sin apellido';
-
-    await $fetch(`${API_URL}/perfiles`, {
-      method: 'PATCH',
-      headers,
-      body: {
-        userId: userId,
-        nombre: nombre,
-        apellido: apellido
-      }
-    });
-
-    // Actualizar estado local
+    // Actualizar estado local con lo que devuelve el backend
     if (authStore.user) {
-      authStore.user.email = email.value;
+      authStore.user.email = usuarioActualizado.email;
+      authStore.user.nombre = usuarioActualizado.nombre;
       if (authStore.user.profile) {
-        authStore.user.profile.username = username.value;
+        authStore.user.profile.username = usuarioActualizado.nombre;
       }
       if (typeof window !== 'undefined') {
         localStorage.setItem('auth_user', JSON.stringify(authStore.user));
@@ -100,7 +89,7 @@ const updateProfile = async () => {
   <div class="min-h-screen pt-12 pb-12 px-4 bg-gray-50 dark:bg-ukiyo-dark">
     <div class="max-w-2xl mx-auto">
       <div class="bg-white dark:bg-ukiyo-nav p-8 md:p-10 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-800">
-        
+
         <div class="flex items-center gap-6 mb-10 border-b border-gray-100 dark:border-gray-800 pb-8">
           <div class="w-20 h-20 bg-ukiyo-gold rounded-full flex items-center justify-center text-3xl font-black text-black shadow-lg">
             {{ (username || 'U').charAt(0).toUpperCase() }}
@@ -133,7 +122,7 @@ const updateProfile = async () => {
           <div v-if="errorMessage" class="text-red-500 text-xs font-bold text-center bg-red-50 p-3 rounded-lg border border-red-100">
             {{ errorMessage }}
           </div>
-          
+
           <div v-if="successMessage" class="text-green-500 text-xs font-bold text-center bg-green-50 p-3 rounded-lg border border-green-100">
             {{ successMessage }}
           </div>
