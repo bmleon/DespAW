@@ -4,30 +4,43 @@ import type { UserRepository } from '../domain/user.repository';
 import type { User } from '../domain/user.model';
 
 export class ApiUserRepository implements UserRepository {
-  // Ruta base del microservicio de usuarios administrada por vuestro Ingress/Gateway
-  private baseUrl = 'https://ukiyocazorla.es/api/usuarios';
+  // Ruta base tomada de la configuración runtime (apiBase), no hardcodeada
+  private get apiBase(): string {
+    return useRuntimeConfig().public.apiBase as string;
+  }
 
-  // 🚀 AUTENTICACIÓN REAL ADAPTADA AL BACKEND (SÓLO USERNAME)
+  private get baseUrl(): string {
+    return `${this.apiBase}/usuarios`;
+  }
+
+  // 🚀 AUTENTICACIÓN REAL ADAPTADA AL BACKEND (email o nombre + password)
   async login(identificadorInput: string, passwordInput: string): Promise<any | null> {
     try {
-      console.log(`🔐 Intentando login real contra el Gateway en: https://ukiyocazorla.es/api/auth/login`);
-      
-      const response = await ofetch<any>('https://ukiyocazorla.es/api/auth/login', {
+      const loginUrl = `${this.apiBase}/auth/login`;
+      console.log(`🔐 Intentando login real contra el Gateway en: ${loginUrl}`);
+
+      // El backend acepta login por "email" (si contiene @) o por "nombre"
+      const esEmail = identificadorInput.includes('@');
+      const body: Record<string, string> = { password: passwordInput };
+      if (esEmail) {
+        body.email = identificadorInput;
+      } else {
+        body.nombre = identificadorInput;
+      }
+
+      const response = await ofetch<any>(loginUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: {
-          username: identificadorInput,
-          password: passwordInput
-        }
+        body
       });
 
       if (response?.access_token) {
         const userData = response.user;
-        
+
         return {
           token: response.access_token,
           profile: {
-            username: userData?.username || identificadorInput,
+            username: userData?.nombre || userData?.username || identificadorInput,
             role: 'Administrador' // Asegura el acceso completo al panel en la demo
           }
         };
@@ -59,7 +72,7 @@ export class ApiUserRepository implements UserRepository {
 
         return {
           id: u.id || u._id || String(u),
-          name: u.username || u.nombre || u.name || 'Usuario sin nombre', 
+          name: u.nombre || u.username || u.name || 'Usuario sin nombre',
           email: u.email || 'sin-email@ukiyo.com',
           // 🌟 SOLUCIÓN ERROR 2322: Forzamos la asignación con 'as any' para que el dominio 
           // acepte vuestros nuevos roles sin que salte el tipado rígido antiguo

@@ -5,6 +5,9 @@ definePageMeta({
   layout: 'default'
 })
 
+const config = useRuntimeConfig()
+const apiBase = config.public.apiBase as string
+
 // --- ESTADOS GENERALES DE UKIYO ---
 const restaurantName = ref('Ukiyo Alta Cocina Japonesa')
 const isOpen = ref(true)
@@ -40,7 +43,7 @@ const triggerGuardarConfiguracion = () => {
         <h2 class="text-2xl font-black uppercase tracking-tight text-gray-900 dark:text-white">
           Configuración del Sistema
         </h2>
-        <p class="text-sm text-gray-500 dark:text-gray-400">Control maestro de operaciones, parámetros del delivery y enlaces del clúster</p>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Control maestro de operaciones, parámetros del delivery y enlaces del servidor</p>
       </div>
 
       <UButton 
@@ -58,7 +61,7 @@ const triggerGuardarConfiguracion = () => {
 
     <transition name="fade">
       <div v-if="showSuccessAlert" class="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 text-sm font-bold flex items-center gap-2">
-        <span>✨ ¡Parámetros operacionales actualizados con éxito en la base de datos central!</span>
+        <span>✨ ¡Parámetros operacionales actualizados con éxito en la base de datos!</span>
       </div>
     </transition>
 
@@ -81,7 +84,7 @@ const triggerGuardarConfiguracion = () => {
                 <span class="inline-block w-2 h-2 rounded-full animate-pulse" :class="isOpen ? 'bg-emerald-500' : 'bg-red-500'"></span>
               </p>
               <p class="text-xs text-gray-500 dark:text-gray-400 max-w-md">
-                Si desactivas este interruptor, el API Gateway rechazará las solicitudes de checkout en la app del cliente y la tienda se declarará en modo mantenimiento.
+                Si desactivas este interruptor, el servidor rechazará las solicitudes de checkout en la app del cliente y la tienda se declarará en modo mantenimiento.
               </p>
             </div>
             <UToggle v-model="isOpen" size="lg" color="amber" />
@@ -148,40 +151,27 @@ const triggerGuardarConfiguracion = () => {
           
           <div class="space-y-4 text-xs">
             <div class="flex justify-between items-center border-b border-gray-100 dark:border-gray-800 pb-2">
-              <span class="text-gray-400 font-semibold uppercase tracking-wider">Cluster Ingress:</span>
+              <span class="text-gray-400 font-semibold uppercase tracking-wider">Entorno:</span>
               <span class="px-2 py-0.5 rounded font-mono bg-amber-500/10 text-amber-500 font-bold uppercase">Production</span>
             </div>
             
             <div class="flex justify-between items-center border-b border-gray-100 dark:border-gray-800 pb-2">
-              <span class="text-gray-400 font-semibold uppercase tracking-wider">Orquestador:</span>
+              <span class="text-gray-400 font-semibold uppercase tracking-wider">Backend:</span>
               <span class="text-gray-900 dark:text-white font-medium flex items-center gap-1">
-                <UIcon name="i-heroicons-cloud" class="w-3.5 h-3.5 text-blue-400" /> Kubernetes
+                <UIcon name="i-heroicons-server" class="w-3.5 h-3.5 text-blue-400" /> NestJS (Render)
               </span>
             </div>
 
             <div class="flex justify-between items-center border-b border-gray-100 dark:border-gray-800 pb-2">
-              <span class="text-gray-400 font-semibold uppercase tracking-wider">ORM Data Layer:</span>
-              <span class="text-gray-900 dark:text-white font-mono">Prisma Engine v7</span>
+              <span class="text-gray-400 font-semibold uppercase tracking-wider">Base de Datos:</span>
+              <span class="text-gray-900 dark:text-white font-mono">PostgreSQL (Supabase)</span>
             </div>
 
             <div class="pt-2 space-y-2">
-              <p class="text-gray-400 font-bold uppercase tracking-wider mb-2">Accesos Directos DevOps:</p>
-              
-              <UButton 
-                href="https://argo.ukiyocazorla.es" 
-                target="_blank" 
-                color="gray" 
-                variant="solid" 
-                block 
-                size="sm"
-                icon="i-heroicons-arrow-top-right-on-square"
-                class="font-semibold text-left justify-start group hover:text-amber-500"
-              >
-                Consola Despliegues (ArgoCD)
-              </UButton>
+              <p class="text-gray-400 font-bold uppercase tracking-wider mb-2">Accesos Directos:</p>
 
               <UButton 
-                href="https://ukiyocazorla.es/api/usuarios" 
+                :href="`${apiBase}/usuarios`" 
                 target="_blank" 
                 color="gray" 
                 variant="solid" 
@@ -190,7 +180,7 @@ const triggerGuardarConfiguracion = () => {
                 icon="i-heroicons-circle-stack"
                 class="font-semibold text-left justify-start group hover:text-amber-500"
               >
-                Endpoint Endpoints API Rest
+                Endpoint API REST
               </UButton>
             </div>
           </div>
@@ -199,7 +189,7 @@ const triggerGuardarConfiguracion = () => {
         <div class="p-4 rounded-2xl bg-zinc-950/20 border border-zinc-800 flex gap-3 text-xs text-gray-500">
           <UIcon name="i-heroicons-information-circle" class="w-5 h-5 text-amber-500 flex-shrink-0" />
           <p>
-            Cualquier mutación en esta sección reconfigura las variables de entorno operacionales compartidas por el Gateway de la tienda y la base de datos Prisma. Manejar bajo estricta responsabilidad.
+            Cualquier mutación en esta sección reconfigura las variables de entorno operacionales compartidas por el backend y la base de datos. Manejar bajo estricta responsabilidad.
           </p>
         </div>
 

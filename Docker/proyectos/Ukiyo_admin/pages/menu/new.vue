@@ -6,6 +6,9 @@ definePageMeta({
   layout: 'default'
 })
 
+const config = useRuntimeConfig()
+const apiBase = config.public.apiBase as string
+
 const route = useRoute()
 const isEditMode = ref(false)
 const productId = ref('')
@@ -46,7 +49,7 @@ onMounted(async () => {
     
     try {
       console.log(`🔍 Cargando datos del producto ${productId.value} para editar...`)
-      const producto = await $fetch<any>(`https://ukiyocazorla.es/api/productos/${productId.value}`)
+      const producto = await $fetch<any>(`${apiBase}/productos/${productId.value}`)
       
       if (producto) {
         name.value = producto.nombre || ''
@@ -97,12 +100,12 @@ const handleGuardarPlato = async () => {
 
     // 🚀 DECISIÓN DE RUTA Y MÉTODO HTTP: POST para crear, PATCH para actualizar parcial en NestJS
     const urlApi = isEditMode.value 
-      ? `https://ukiyocazorla.es/api/productos/${productId.value}`
-      : 'https://ukiyocazorla.es/api/productos'
+      ? `${apiBase}/productos/${productId.value}`
+      : `${apiBase}/productos`
       
     const metodoHttp = isEditMode.value ? 'PATCH' : 'POST'
 
-    console.log(`📦 Enviando ${metodoHttp} al clúster:`, bodyPayload)
+    console.log(`📦 Enviando ${metodoHttp} al backend:`, bodyPayload)
 
     await $fetch(urlApi, {
       method: metodoHttp,
@@ -123,7 +126,7 @@ const handleGuardarPlato = async () => {
 
   } catch (err: any) {
     console.error('Error crítico en la operación del producto:', err)
-    errorMsg.value = err.data?.message || 'El Gateway rechazó la operación. Verifica los campos.'
+    errorMsg.value = err.data?.message || 'El servidor rechazó la operación. Verifica los campos.'
   } finally {
     isLoading.value = false
   }

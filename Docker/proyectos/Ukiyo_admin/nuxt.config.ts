@@ -29,9 +29,9 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     public: {
-      // SOLUCIÓN: Ponemos la URL "a fuego" aquí. 
-      // Así nos aseguramos de que siempre apunte al Gateway de Kubernetes (30090).
-      apiBase: 'https://ukiyocazorla.es'
+      // Backend real en Render. Se puede sobreescribir con la variable de entorno
+      // NUXT_PUBLIC_API_BASE (recomendado para producción en Vercel).
+      apiBase: process.env.NUXT_PUBLIC_API_BASE || 'https://proyecto-ukiyo-backend.onrender.com'
     }
   }
 })

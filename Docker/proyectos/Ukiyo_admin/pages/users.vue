@@ -6,6 +6,9 @@ definePageMeta({
   layout: 'default'
 })
 
+const config = useRuntimeConfig()
+const apiBase = config.public.apiBase as string
+
 const userRepository = new ApiUserRepository()
 
 // ==========================================
@@ -82,11 +85,12 @@ const ejecutarCambioDeRol = async () => {
       ? rolSeleccionado.value 
       : 'USER'
 
+    // ⚠️ El backend (Prisma) usa el campo "rol", no "role"
     const bodyPayload = {
-      role: rolParaBackend
+      rol: rolParaBackend
     }
 
-    await $fetch(`https://ukiyocazorla.es/api/usuarios/${usuarioSeleccionadoId.value}`, {
+    await $fetch(`${apiBase}/usuarios/${usuarioSeleccionadoId.value}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -94,7 +98,7 @@ const ejecutarCambioDeRol = async () => {
         'Authorization': `Bearer ${token}`
       },
       body: bodyPayload
-    }).catch(e => console.warn('Bypass controlado de rol para evitar errores en BD'))
+    })
 
     const usuarioEnTabla = users.value.find(u => u.id === usuarioSeleccionadoId.value)
     if (usuarioEnTabla) {
@@ -105,6 +109,7 @@ const ejecutarCambioDeRol = async () => {
 
   } catch (error) {
     console.error('❌ Error en la mutación:', error)
+    alert('No se pudo actualizar el rol del usuario. Revisa la consola para más detalles.')
   } finally {
     isProcessingRole.value = false
   }
@@ -142,16 +147,17 @@ const guardarNuevoUsuario = async () => {
   const token = useCookie('auth_token').value || (typeof window !== 'undefined' ? localStorage.getItem('token') : null)
 
   try {
-    // 🚀 PAYLOAD CLONADO DE LA TIENDA: Solo los campos validados por el DTO
+    // ⚠️ El backend (CreateUsuarioDto) exige "nombre" (no "username") y usa "rol" (no "role")
     const bodyPayload = {
-      username: nuevoUsuario.value.username.trim(),
+      nombre: nuevoUsuario.value.username.trim(),
       email: nuevoUsuario.value.email.trim().toLowerCase(),
-      password: nuevoUsuario.value.password
+      password: nuevoUsuario.value.password,
+      rol: nuevoUsuario.value.roleValue
     };
 
-    console.log('🚀 Lanzando petición oficial idéntica a la tienda cliente:', bodyPayload);
+    console.log('🚀 Lanzando petición de alta al backend:', bodyPayload);
 
-    const response = await $fetch<any>('https://ukiyocazorla.es/api/usuarios', {
+    const response = await $fetch<any>(`${apiBase}/usuarios`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',

@@ -4,17 +4,16 @@ import type { ProductRepository } from '../domain/product.repository';
 import type { Product } from '../domain/product.model';
 
 export class ApiProductRepository implements ProductRepository {
-  private baseUrl: string;
-
-  constructor() {
-    this.baseUrl = 'https://ukiyocazorla.es'; 
+  // Ruta base tomada de la configuración runtime (apiBase), no hardcodeada
+  private get baseUrl(): string {
+    return useRuntimeConfig().public.apiBase as string;
   }
 
   // 1. Obtener todos los platos de la BD (Mapea de Español al modelo Product)
   async findAll(): Promise<Product[]> {
     try {
-      const data = await ofetch<any[]>(`${this.baseUrl}/api/productos`);
-      
+      const data = await ofetch<any[]>(`${this.baseUrl}/productos`);
+
       if (!Array.isArray(data)) return [];
 
       return data.map((item: any) => ({
@@ -44,7 +43,7 @@ export class ApiProductRepository implements ProductRepository {
 
       console.log('🚀 Repositorio enviando DTO oficial al clúster:', bodyDto);
 
-      const response = await ofetch<any>(`${this.baseUrl}/api/productos`, {
+      const response = await ofetch<any>(`${this.baseUrl}/productos`, {
         method: 'POST',
         body: bodyDto
       });
@@ -66,7 +65,7 @@ export class ApiProductRepository implements ProductRepository {
   // 3. Borrar un plato
   async delete(id: string): Promise<void> {
     try {
-      await ofetch(`${this.baseUrl}/api/productos/${id}`, {
+      await ofetch(`${this.baseUrl}/productos/${id}`, {
         method: 'DELETE'
       });
     } catch (error) {

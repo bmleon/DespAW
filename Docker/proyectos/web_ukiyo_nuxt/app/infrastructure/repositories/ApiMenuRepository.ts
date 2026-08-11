@@ -4,7 +4,7 @@ import type { Plato, MenuRepository } from '~/core/domain/plato.model';
 export class ApiMenuRepository implements MenuRepository {
   private getBaseUrl() {
     const config = useRuntimeConfig();
-    return config.public.apiBaseUrl || 'https://ukiyocazorla.es/api';
+    return config.public.apiBaseUrl || 'https://proyecto-ukiyo-backend.onrender.com';
   }
 
   async obtenerCarta(): Promise<Plato[]> {
