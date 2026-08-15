@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 
-// --- TIPOS DE DATOS ---
+const config = useRuntimeConfig()
+const apiBase = config.public.apiBase as string
+
+const getToken = () => {
+  return useCookie('auth_token').value || (typeof window !== 'undefined' ? localStorage.getItem('token') : null)
+}
+
+// --- TIPOS DE DATOS (alineados con lo que devuelve el backend) ---
 interface OrderItem {
   name: string
   quantity: number
@@ -13,7 +20,7 @@ interface Order {
   customer: string
   email: string
   total: number
-  status: string
+  status: string       // valor real del backend: PENDIENTE, EN_PREPARACION, EN_REPARTO, ENTREGADO, CANCELADO
   date: string
   items: OrderItem[]
 }
@@ -28,76 +35,54 @@ const columns = [
   { key: 'actions', label: 'Acciones' }
 ]
 
-// Estados posibles y sus colores
-const statusOptions = ['Pendiente', 'En Cocina', 'Listo', 'Entregado', 'Cancelado']
+// Estados reales del backend, con su etiqueta en español para mostrar
+const statusOptions = [
+  { value: 'PENDIENTE', label: 'Pendiente', color: 'orange' },
+  { value: 'EN_PREPARACION', label: 'En preparación', color: 'blue' },
+  { value: 'EN_REPARTO', label: 'En reparto', color: 'purple' },
+  { value: 'ENTREGADO', label: 'Entregado', color: 'green' },
+  { value: 'CANCELADO', label: 'Cancelado', color: 'red' }
+] as const
 
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'Pendiente': return 'orange'
-    case 'En Cocina': return 'blue'
-    case 'Listo': return 'purple'
-    case 'Entregado': return 'green'
-    case 'Cancelado': return 'red'
-    default: return 'gray'
-  }
+const getStatusInfo = (status: string) => {
+  return statusOptions.find(s => s.value === status) || { value: status, label: status, color: 'gray' as const }
 }
-
-// --- MOCKS DE RESPALDO ---
-const mockOrders: Order[] = [
-  {
-    id: "PED-2026-001",
-    customer: "Carlos Mendoza",
-    email: "carlos.mendoza@email.com",
-    total: 24.50,
-    status: "En Cocina",
-    date: "2026-06-02T10:15:00Z",
-    items: [
-      { name: "Gyozas de Carne (5 uds.)", quantity: 2, price: 4.80 },
-      { name: "Ramen Tonkotsu Especial", quantity: 1, price: 14.90 }
-    ]
-  },
-  {
-    id: "PED-2026-002",
-    customer: "Lucía Gómez",
-    email: "lucia.g@email.com",
-    total: 36.50,
-    status: "Pendiente",
-    date: "2026-06-02T09:45:00Z",
-    items: [
-      { name: "Takoyaki (5 uds.)", quantity: 1, price: 5.50 },
-      { name: "Ukiyo Roll Premium (8 piezas)", quantity: 2, price: 15.50 }
-    ]
-  },
-  {
-    id: "PED-2026-003",
-    customer: "Alejandro Silva",
-    email: "alex.silva@email.com",
-    total: 17.30,
-    status: "Entregado",
-    date: "2026-06-01T21:30:00Z",
-    items: [
-      { name: "Gyozas de Verduras (5 uds.)", quantity: 1, price: 4.50 },
-      { name: "Poke de Salmón", quantity: 1, price: 12.80 }
-    ]
-  }
-]
 
 // --- CARGA DE DATOS REALES ---
 const orders = ref<Order[]>([])
 const pending = ref(false)
+const loadError = ref('')
+
+// Mapea un "pedido" tal como lo devuelve el backend (cliente_nombre, detalle_pedidos...)
+// al formato Order que usa esta pantalla
+const mapPedidoBackend = (p: any): Order => ({
+  id: String(p.id),
+  customer: p.cliente_nombre || 'Sin nombre',
+  email: p.cliente_email || '',
+  total: Number(p.total) || 0,
+  status: p.estado_pedido || 'PENDIENTE',
+  date: p.creado_en || new Date().toISOString(),
+  items: (p.detalle_pedidos || []).map((d: any) => ({
+    name: d.platos?.nombre || 'Plato eliminado',
+    quantity: d.cantidad,
+    price: Number(d.precio_unitario) || 0
+  }))
+})
 
 const loadOrders = async () => {
   pending.value = true
+  loadError.value = ''
   try {
-    const data = await $fetch<Order[]>('/api/order')
-    if (data && Array.isArray(data) && data.length > 0) {
-      orders.value = data
-    } else {
-      orders.value = [...mockOrders]
-    }
-  } catch (err) {
-    console.warn('Cargando pasarela de mocks por desconexión del servidor...')
-    orders.value = [...mockOrders]
+    const data = await $fetch<any[]>(`${apiBase}/pedidos`, {
+      headers: {
+        'Authorization': `Bearer ${getToken()}`
+      }
+    })
+    orders.value = Array.isArray(data) ? data.map(mapPedidoBackend) : []
+  } catch (err: any) {
+    console.error('Error al cargar los pedidos:', err)
+    loadError.value = 'No se pudieron cargar los pedidos. Comprueba tu conexión o que tu sesión de administrador siga activa.'
+    orders.value = []
   } finally {
     pending.value = false
   }
@@ -134,22 +119,28 @@ const openOrderDetails = (order: Order) => {
 
 // --- CAMBIAR ESTADO ---
 const updateStatus = async (order: Order, newStatus: string) => {
-  order.status = newStatus 
+  const estadoAnterior = order.status
+  order.status = newStatus // actualización optimista en la interfaz
 
   try {
-    await $fetch('/api/order', {
-      method: 'PUT' as any,
-      body: { id: order.id, status: newStatus }
+    await $fetch(`${apiBase}/pedidos/${order.id}/estado`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${getToken()}`
+      },
+      body: { estado: newStatus }
     })
   } catch (e: any) {
-    console.warn('Estado modificado localmente.')
+    console.error('Error al actualizar el estado del pedido:', e)
+    order.status = estadoAnterior // revertimos si falla de verdad
+    alert('No se pudo actualizar el estado del pedido. Inténtalo de nuevo.')
   }
 }
 
 const items = (row: Order) => [
-  statusOptions.map(status => ({
-    label: 'Marcar como ' + status,
-    click: () => updateStatus(row, status)
+  statusOptions.map(s => ({
+    label: 'Marcar como ' + s.label,
+    click: () => updateStatus(row, s.value)
   }))
 ]
 </script>
@@ -172,6 +163,8 @@ const items = (row: Order) => [
       </UButton>
     </div>
 
+    <UAlert v-if="loadError" :description="loadError" color="red" variant="soft" icon="i-heroicons-exclamation-triangle" class="mb-4" />
+
     <UCard :ui="{ body: { padding: 'p-0 sm:p-0' } }">
       
       <div class="flex flex-col md:flex-row gap-4 p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
@@ -183,7 +176,7 @@ const items = (row: Order) => [
         />
         <USelectMenu 
           v-model="statusFilter" 
-          :options="['Todos', ...statusOptions]" 
+          :options="['Todos', ...statusOptions.map(s => s.value)]" 
           searchable
           searchable-placeholder="Filtrar estado..."
           class="w-full md:w-52" 
@@ -198,7 +191,7 @@ const items = (row: Order) => [
         :empty-state="{ icon: 'i-heroicons-shopping-bag', label: 'No hay pedidos con este criterio.' }"
       >
         <template #id-data="{ row }">
-          <span class="font-mono text-xs font-bold text-gray-700 dark:text-gray-300">{{ row.id }}</span>
+          <span class="font-mono text-xs font-bold text-gray-700 dark:text-gray-300">#{{ row.id }}</span>
         </template>
 
         <template #customer-data="{ row }">
@@ -219,8 +212,8 @@ const items = (row: Order) => [
         </template>
 
         <template #status-data="{ row }">
-          <UBadge :color="getStatusColor(row.status)" variant="subtle" size="xs" class="font-semibold">
-            {{ row.status }}
+          <UBadge :color="getStatusInfo(row.status).color" variant="subtle" size="xs" class="font-semibold">
+            {{ getStatusInfo(row.status).label }}
           </UBadge>
         </template>
 
@@ -242,7 +235,7 @@ const items = (row: Order) => [
         <template #header>
           <div class="flex justify-between items-center">
             <h3 class="font-black text-lg text-gray-900 dark:text-white">Ticket #{{ selectedOrder.id }}</h3>
-            <UBadge :color="getStatusColor(selectedOrder.status)" variant="solid">{{ selectedOrder.status }}</UBadge>
+            <UBadge :color="getStatusInfo(selectedOrder.status).color" variant="solid">{{ getStatusInfo(selectedOrder.status).label }}</UBadge>
           </div>
         </template>
 

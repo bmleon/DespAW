@@ -13,56 +13,72 @@ const route = useRoute()
 const isEditMode = ref(false)
 const productId = ref('')
 
-// Estados originales del formulario
+// Estados del formulario
 const name = ref('')
 const price = ref(0)
+const descripcion = ref('')
 const extensionImagen = ref('.jpg')
+const disponible = ref(true)
 
 const isLoading = ref(false)
+const isLoadingCategorias = ref(false)
 const errorMsg = ref('')
 const successMsg = ref('')
 
-// Array mapeado con las 12 categorías reales de Ukiyo
-const categories = [
-  { label: 'Entrantes', value: 'entrantes' },
-  { label: 'Niguiris', value: 'niguiris' },
-  { label: 'Hosomakis', value: 'hosomakis' },
-  { label: 'Futomakis', value: 'futomakis' },
-  { label: 'Uramakis', value: 'uramakis' },
-  { label: 'Novedades!', value: 'novedades!' },
-  { label: 'Combos', value: 'combos' },
-  { label: 'Variados Ukiyo', value: 'variados ukiyo' },
-  { label: 'Pokes', value: 'pokes' },
-  { label: 'Postres', value: 'postres' },
-  { label: 'Bebidas', value: 'bebidas' },
-  { label: 'Suplementos', value: 'suplementos' }
-]
+// Categorías reales, cargadas desde el backend (GET /carta/categorias),
+// ya que "categoriaId" tiene que ser el ID numérico real de una categoría existente.
+interface CategoriaBackend { id: number; nombre: string }
+const categoriasBackend = ref<CategoriaBackend[]>([])
+const selectedCategoria = ref<CategoriaBackend | undefined>(undefined)
 
-const selectedCategory = ref(categories[0])
+const cargarCategorias = async () => {
+  isLoadingCategorias.value = true
+  try {
+    const data = await $fetch<CategoriaBackend[]>(`${apiBase}/carta/categorias`)
+    categoriasBackend.value = data
+    if (data.length > 0 && !selectedCategoria.value) {
+      selectedCategoria.value = data[0]
+    }
+  } catch (err) {
+    console.error('Error al cargar las categorías:', err)
+    errorMsg.value = 'No se pudieron cargar las categorías de la carta.'
+  } finally {
+    isLoadingCategorias.value = false
+  }
+}
+
+// Helper para obtener el token guardado tras el login del panel
+const getToken = () => {
+  return useCookie('auth_token').value || (typeof window !== 'undefined' ? localStorage.getItem('token') : null)
+}
 
 // DETECTOR DE MODO: Si viene un ?id= en la URL, precargamos el plato
 onMounted(async () => {
+  await cargarCategorias()
+
   if (route.query.id) {
     isEditMode.value = true
     productId.value = String(route.query.id)
     isLoading.value = true
-    
+
     try {
-      console.log(`🔍 Cargando datos del producto ${productId.value} para editar...`)
-      const producto = await $fetch<any>(`${apiBase}/productos/${productId.value}`)
-      
-      if (producto) {
-        name.value = producto.nombre || ''
-        price.value = Number(producto.precio) || 0
-        
-        // Sincronizamos el selector visual con la categoría que viene del back
-        const catEncontrada = categories.find(c => c.label.toUpperCase() === producto.categoria?.toUpperCase())
+      console.log(`🔍 Cargando datos del plato ${productId.value} para editar...`)
+      const plato = await $fetch<any>(`${apiBase}/carta/platos/${productId.value}`)
+
+      if (plato) {
+        name.value = plato.nombre || ''
+        price.value = Number(plato.precio) || 0
+        descripcion.value = plato.descripcion || ''
+        disponible.value = plato.disponible !== false
+
+        // Sincronizamos el selector con la categoría real del plato
+        const catEncontrada = categoriasBackend.value.find(c => c.id === plato.categoria_id)
         if (catEncontrada) {
-          selectedCategory.value = catEncontrada
+          selectedCategoria.value = catEncontrada
         }
       }
     } catch (err) {
-      console.error('Error al cargar el producto para edición:', err)
+      console.error('Error al cargar el plato para edición:', err)
       errorMsg.value = 'No se pudieron precargar los datos del plato.'
     } finally {
       isLoading.value = false
@@ -71,8 +87,8 @@ onMounted(async () => {
 })
 
 const handleGuardarPlato = async () => {
-  if (!name.value || price.value < 0) {
-    errorMsg.value = 'Por favor, rellena los campos obligatorios.'
+  if (!name.value || price.value < 0 || !descripcion.value || !selectedCategoria.value) {
+    errorMsg.value = 'Por favor, rellena los campos obligatorios (nombre, precio, descripción y categoría).'
     return
   }
 
@@ -81,51 +97,52 @@ const handleGuardarPlato = async () => {
   successMsg.value = ''
 
   try {
-    const categoriaTexto = selectedCategory.value.label.trim()
-
-    // Automatización del nombre de la foto física para la descripción
+    // Ruta de la imagen física (se guarda en el campo "imagen", no en "descripcion")
     const nombreNormalizado = name.value
       .toLowerCase()
       .trim()
-      .replace(/\s+/g, '-') 
-      .normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
+      .replace(/\s+/g, '-')
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     const rutaImagenFinal = `/comida/${nombreNormalizado}${extensionImagen.value}`
 
     const bodyPayload = {
       nombre: name.value.trim(),
+      descripcion: descripcion.value.trim(),
       precio: Number(price.value),
-      categoria: categoriaTexto,
-      descripcion: rutaImagenFinal
+      imagen: rutaImagenFinal,
+      disponible: disponible.value,
+      categoriaId: selectedCategoria.value!.id
     }
 
-    // 🚀 DECISIÓN DE RUTA Y MÉTODO HTTP: POST para crear, PATCH para actualizar parcial en NestJS
-    const urlApi = isEditMode.value 
-      ? `${apiBase}/productos/${productId.value}`
-      : `${apiBase}/productos`
-      
-    const metodoHttp = isEditMode.value ? 'PATCH' : 'POST'
+    // El backend usa PUT (no PATCH) para actualizar un plato
+    const urlApi = isEditMode.value
+      ? `${apiBase}/carta/platos/${productId.value}`
+      : `${apiBase}/carta/platos`
+
+    const metodoHttp = isEditMode.value ? 'PUT' : 'POST'
 
     console.log(`📦 Enviando ${metodoHttp} al backend:`, bodyPayload)
 
     await $fetch(urlApi, {
       method: metodoHttp,
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${getToken()}`
       },
       body: bodyPayload
     })
 
-    successMsg.value = isEditMode.value 
-      ? '¡Plato gastronómico actualizado con éxito!' 
+    successMsg.value = isEditMode.value
+      ? '¡Plato gastronómico actualizado con éxito!'
       : '¡Plato gastronómico creado con éxito!'
-    
+
     setTimeout(() => {
-      navigateTo('/menu') 
+      navigateTo('/menu')
     }, 1500)
 
   } catch (err: any) {
-    console.error('Error crítico en la operación del producto:', err)
+    console.error('Error crítico en la operación del plato:', err)
     errorMsg.value = err.data?.message || 'El servidor rechazó la operación. Verifica los campos.'
   } finally {
     isLoading.value = false
@@ -140,16 +157,21 @@ const handleGuardarPlato = async () => {
         {{ isEditMode ? 'Editar Plato Ukiyo' : 'Nuevo Plato Ukiyo' }}
       </h1>
       <p class="text-gray-500 text-sm">
-        {{ isEditMode ? 'Modifica las propiedades del producto en tiempo real.' : 'Añade un producto vinculándolo automáticamente a la carpeta public/comida.' }}
+        {{ isEditMode ? 'Modifica las propiedades del plato en tiempo real.' : 'Añade un plato vinculándolo automáticamente a la carpeta public/comida.' }}
       </p>
     </div>
 
     <UCard>
       <form @submit.prevent="handleGuardarPlato" class="space-y-5 p-2">
-        
+
         <div>
           <label class="block text-xs font-bold uppercase text-gray-400 mb-2">Nombre del Plato *</label>
           <UInput v-model="name" placeholder="Ej: Ensalada Wakame" required class="w-full" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase text-gray-400 mb-2">Descripción *</label>
+          <UTextarea v-model="descripcion" placeholder="Ej: Ensalada fresca de algas wakame con aliño de sésamo tostado" required class="w-full" />
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -158,17 +180,26 @@ const handleGuardarPlato = async () => {
             <UInput v-model="price" type="number" step="0.01" min="0" required class="w-full" />
           </div>
           <div>
-            <label class="block text-xs font-bold uppercase text-gray-400 mb-2">Categoría</label>
-            <USelectMenu 
-              v-model="selectedCategory" 
-              :options="categories" 
-              option-attribute="label"
+            <label class="block text-xs font-bold uppercase text-gray-400 mb-2">Categoría *</label>
+            <USelectMenu
+              v-model="selectedCategoria"
+              :options="categoriasBackend"
+              option-attribute="nombre"
               placeholder="Selecciona la categoría"
               searchable
               searchable-placeholder="Buscar categoría..."
-              class="w-full" 
+              :loading="isLoadingCategorias"
+              class="w-full"
             />
+            <p v-if="!isLoadingCategorias && categoriasBackend.length === 0" class="text-red-400 text-[11px] mt-2">
+              No hay categorías creadas todavía en la carta. Crea una desde "Categorías" antes de añadir platos.
+            </p>
           </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase text-gray-400 mb-2">Disponible</label>
+          <UToggle v-model="disponible" color="amber" />
         </div>
 
         <div v-if="!isEditMode">

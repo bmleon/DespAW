@@ -9,10 +9,14 @@ export class ApiProductRepository implements ProductRepository {
     return useRuntimeConfig().public.apiBase as string;
   }
 
+  private getToken(): string | null {
+    return useCookie('auth_token').value || (typeof window !== 'undefined' ? localStorage.getItem('token') : null);
+  }
+
   // 1. Obtener todos los platos de la BD (Mapea de Español al modelo Product)
   async findAll(): Promise<Product[]> {
     try {
-      const data = await ofetch<any[]>(`${this.baseUrl}/productos`);
+      const data = await ofetch<any[]>(`${this.baseUrl}/carta/platos`);
 
       if (!Array.isArray(data)) return [];
 
@@ -21,30 +25,37 @@ export class ApiProductRepository implements ProductRepository {
         name: item.nombre || 'Plato sin nombre',
         description: item.descripcion || '',
         price: Number(item.precio) || 0,
-        category: item.categoria || 'entrantes', 
+        category: item.categorias?.nombre || 'Sin categoría',
         available: item.disponible !== false
       }));
     } catch (error) {
-      console.error('Error al obtener productos desde la API:', error);
-      throw new Error('No se pudieron cargar los productos.');
+      console.error('Error al obtener los platos desde la API:', error);
+      throw new Error('No se pudieron cargar los platos.');
     }
   }
 
-  // 2. Guardar un plato nuevo adaptado al DTO en español de tu compañero
+  // 2. Guardar un plato nuevo
+  // ⚠️ IMPORTANTE: "category" aquí debe ser el ID numérico de la categoría (categoriaId),
+  // no el nombre en texto. Este repositorio no resuelve ese ID: quien llame a create()
+  // debe pasar ya el categoriaId correcto en product.category (como string numérico) o
+  // adaptar el tipo Product para incluir un campo categoriaId numérico explícito.
   async create(product: Product): Promise<Product> {
     try {
       const bodyDto = {
         nombre: product.name.trim(),
         precio: Number(product.price),
-        categoria: product.category.toUpperCase().trim(), // Forzado en mayúsculas para cumplir el DTO
+        categoriaId: Number(product.category),
         descripcion: product.description || `Exquisito plato de ${product.name.trim()} al estilo Ukiyo.`,
         disponible: product.available !== false
       };
 
-      console.log('🚀 Repositorio enviando DTO oficial al clúster:', bodyDto);
+      console.log('🚀 Repositorio enviando DTO al backend:', bodyDto);
 
-      const response = await ofetch<any>(`${this.baseUrl}/productos`, {
+      const response = await ofetch<any>(`${this.baseUrl}/carta/platos`, {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.getToken()}`
+        },
         body: bodyDto
       });
 
@@ -53,11 +64,11 @@ export class ApiProductRepository implements ProductRepository {
         name: response?.nombre || product.name,
         description: response?.descripcion || product.description,
         price: Number(response?.precio) || product.price,
-        category: response?.categoria || product.category, 
+        category: response?.categorias?.nombre || product.category,
         available: response?.disponible !== false
       };
     } catch (error: any) {
-      console.error('Error al crear el producto en la API:', error);
+      console.error('Error al crear el plato en la API:', error);
       throw error;
     }
   }
@@ -65,12 +76,15 @@ export class ApiProductRepository implements ProductRepository {
   // 3. Borrar un plato
   async delete(id: string): Promise<void> {
     try {
-      await ofetch(`${this.baseUrl}/productos/${id}`, {
-        method: 'DELETE'
+      await ofetch(`${this.baseUrl}/carta/platos/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${this.getToken()}`
+        }
       });
     } catch (error) {
-      console.error('Error al borrar el producto en la API:', error);
-      throw new Error('No se pudo eliminar el producto.');
+      console.error('Error al borrar el plato en la API:', error);
+      throw new Error('No se pudo eliminar el plato.');
     }
   }
 }

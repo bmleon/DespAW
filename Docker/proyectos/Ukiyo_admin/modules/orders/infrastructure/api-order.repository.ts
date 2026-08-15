@@ -9,9 +9,18 @@ export class ApiOrderRepository implements OrderRepository {
     return useRuntimeConfig().public.apiBase as string;
   }
 
+  private getToken(): string | null {
+    return useCookie('auth_token').value || (typeof window !== 'undefined' ? localStorage.getItem('token') : null);
+  }
+
+  // GET /pedidos está protegido con @Roles('ADMIN'), así que hace falta el token
   async findAll(): Promise<Order[]> {
     try {
-      const data = await ofetch<Order[]>(`${this.baseUrl}/pedidos`);
+      const data = await ofetch<Order[]>(`${this.baseUrl}/pedidos`, {
+        headers: {
+          'Authorization': `Bearer ${this.getToken()}`
+        }
+      });
       return data;
     } catch (error) {
       console.error('Error al obtener los pedidos desde la API:', error);
