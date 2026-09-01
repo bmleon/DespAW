@@ -13,6 +13,10 @@ export class ApiUserRepository implements UserRepository {
     return `${this.apiBase}/usuarios`;
   }
 
+  private getToken(): string | null {
+    return useCookie('auth_token').value || (typeof window !== 'undefined' ? localStorage.getItem('token') : null);
+  }
+
   // 🚀 AUTENTICACIÓN REAL ADAPTADA AL BACKEND (email o nombre + password)
   async login(identificadorInput: string, passwordInput: string): Promise<any | null> {
     try {
@@ -53,12 +57,17 @@ export class ApiUserRepository implements UserRepository {
   }
 
   // 🚀 LISTAR TODOS LOS USUARIOS REALES DE LA BASE DE DATOS
+  // GET /usuarios está protegido con @Roles('ADMIN'), así que hace falta el token
   async findAll(): Promise<User[]> {
     try {
       console.log(`🔌 Conectando Repositorio a: ${this.baseUrl}`);
-      const response = await ofetch<any>(this.baseUrl);
+      const response = await ofetch<any>(this.baseUrl, {
+        headers: {
+          'Authorization': `Bearer ${this.getToken()}`
+        }
+      });
       const usersList = Array.isArray(response) ? response : response?.data || [];
-      
+
       return usersList.map((u: any) => {
         let rolBackend = 'CLIENTE';
         if (Array.isArray(u.roles) && u.roles.length > 0) {
@@ -94,9 +103,12 @@ export class ApiUserRepository implements UserRepository {
       const apiRoleName = role.toUpperCase() === 'CLIENTE' ? 'USER' : role.toUpperCase();
 
       await fetch(`${this.baseUrl}/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roles: [apiRoleName] })
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.getToken()}`
+        },
+        body: JSON.stringify({ rol: apiRoleName })
       });
 
       // Independientemente de si el servidor respondió 200 o 400,
@@ -114,7 +126,12 @@ export class ApiUserRepository implements UserRepository {
   // 🚀 ELIMINAR USUARIO (BAJA LÓGICA)
   async delete(id: string): Promise<void> {
     try {
-      await ofetch(`${this.baseUrl}/${id}`, { method: 'DELETE' });
+      await ofetch(`${this.baseUrl}/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${this.getToken()}`
+        }
+      });
     } catch (error) {
       console.error('Error al eliminar el usuario:', error);
       throw new Error('No se pudo dar de baja al usuario.');
