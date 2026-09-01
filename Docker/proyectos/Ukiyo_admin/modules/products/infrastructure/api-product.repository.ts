@@ -10,7 +10,15 @@ export class ApiProductRepository implements ProductRepository {
   }
 
   private getToken(): string | null {
-    return useCookie('auth_token').value || (typeof window !== 'undefined' ? localStorage.getItem('token') : null);
+    if (typeof window === 'undefined') return null;
+    const raw = localStorage.getItem('user_session');
+    if (!raw) return null;
+    try {
+      const session = JSON.parse(raw);
+      return session?.token || null;
+    } catch {
+      return null;
+    }
   }
 
   // 1. Obtener todos los platos de la BD (Mapea de Español al modelo Product)

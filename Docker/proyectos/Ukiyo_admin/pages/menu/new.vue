@@ -48,8 +48,16 @@ const cargarCategorias = async () => {
 }
 
 // Helper para obtener el token guardado tras el login del panel
-const getToken = () => {
-  return useCookie('auth_token').value || (typeof window !== 'undefined' ? localStorage.getItem('token') : null)
+const getToken = (): string | null => {
+  if (typeof window === 'undefined') return null
+  const raw = localStorage.getItem('user_session')
+  if (!raw) return null
+  try {
+    const session = JSON.parse(raw)
+    return session?.token || null
+  } catch {
+    return null
+  }
 }
 
 // DETECTOR DE MODO: Si viene un ?id= en la URL, precargamos el plato

@@ -78,7 +78,18 @@ const ejecutarCambioDeRol = async () => {
   if (!usuarioSeleccionadoId.value) return
   isProcessingRole.value = true
   
-  const token = useCookie('auth_token').value || (typeof window !== 'undefined' ? localStorage.getItem('token') : null)
+  const getToken = (): string | null => {
+    if (typeof window === 'undefined') return null
+    const raw = localStorage.getItem('user_session')
+    if (!raw) return null
+    try {
+      const session = JSON.parse(raw)
+      return session?.token || null
+    } catch {
+      return null
+    }
+  }
+  const token = getToken()
   
   try {
     const rolParaBackend = ['ADMIN', 'USER'].includes(rolSeleccionado.value) 
@@ -144,7 +155,18 @@ const guardarNuevoUsuario = async () => {
   if (!nuevoUsuario.value.username || !nuevoUsuario.value.email || !nuevoUsuario.value.password) return
   isSavingUser.value = true
 
-  const token = useCookie('auth_token').value || (typeof window !== 'undefined' ? localStorage.getItem('token') : null)
+  const getToken = (): string | null => {
+    if (typeof window === 'undefined') return null
+    const raw = localStorage.getItem('user_session')
+    if (!raw) return null
+    try {
+      const session = JSON.parse(raw)
+      return session?.token || null
+    } catch {
+      return null
+    }
+  }
+  const token = getToken()
 
   try {
     // ⚠️ El backend (CreateUsuarioDto) exige "nombre" (no "username") y usa "rol" (no "role")

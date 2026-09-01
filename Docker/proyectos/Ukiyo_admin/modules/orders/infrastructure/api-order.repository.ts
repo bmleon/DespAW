@@ -10,7 +10,15 @@ export class ApiOrderRepository implements OrderRepository {
   }
 
   private getToken(): string | null {
-    return useCookie('auth_token').value || (typeof window !== 'undefined' ? localStorage.getItem('token') : null);
+    if (typeof window === 'undefined') return null;
+    const raw = localStorage.getItem('user_session');
+    if (!raw) return null;
+    try {
+      const session = JSON.parse(raw);
+      return session?.token || null;
+    } catch {
+      return null;
+    }
   }
 
   // GET /pedidos está protegido con @Roles('ADMIN'), así que hace falta el token

@@ -14,7 +14,15 @@ export class ApiUserRepository implements UserRepository {
   }
 
   private getToken(): string | null {
-    return useCookie('auth_token').value || (typeof window !== 'undefined' ? localStorage.getItem('token') : null);
+    if (typeof window === 'undefined') return null;
+    const raw = localStorage.getItem('user_session');
+    if (!raw) return null;
+    try {
+      const session = JSON.parse(raw);
+      return session?.token || null;
+    } catch {
+      return null;
+    }
   }
 
   // 🚀 AUTENTICACIÓN REAL ADAPTADA AL BACKEND (email o nombre + password)
