@@ -9,7 +9,9 @@ export default defineNuxtConfig({
     '@nuxtjs/tailwindcss', 
     '@pinia/nuxt', 
     '@nuxt/image',
-    '@nuxtjs/i18n'
+    '@nuxtjs/i18n',
+    '@vercel/analytics', // 📊 Vercel Analytics (Visitas)
+    '@vercel/speed-insights' // ⚡ Vercel Speed Insights (Velocidad)
   ],
 
   i18n: {
