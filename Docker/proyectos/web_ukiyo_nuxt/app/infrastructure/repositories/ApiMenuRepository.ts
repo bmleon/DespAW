@@ -9,7 +9,8 @@ export class ApiMenuRepository implements MenuRepository {
 
   async obtenerCarta(): Promise<Plato[]> {
     try {
-      const response = await fetch(`${this.getBaseUrl()}/productos`);
+      // 1. Cambiamos a la ruta oficial de tu nuevo backend
+      const response = await fetch(`${this.getBaseUrl()}/carta/platos`);
       
       if (!response.ok) throw new Error('Error al obtener la carta desde el servidor');
       
@@ -17,32 +18,35 @@ export class ApiMenuRepository implements MenuRepository {
 
       if (!Array.isArray(data)) return [];
 
-      // Dominio oficial de la tienda donde SÍ existe la carpeta public/comida
-      const dominioTienda = 'https://web-ukiyo.vercel.app';
-
       return data.map((item: any) => {
         const precioNumerico = Number(item.precio) || 0;
         
-        // 🌟 Si la descripción empieza por /comida, le añadimos el dominio de la tienda delante
-        const rutaDescripcion = item.descripcion || '';
-        const urlImagenCorregida = rutaDescripcion.startsWith('/') 
-          ? `${dominioTienda}${rutaDescripcion}`
-          : rutaDescripcion;
+        // 2. La imagen ahora viene directa de Supabase, ya no usamos la descripción
+        const urlImagen = item.imagen || '';
+        const descripcionReal = item.descripcion || '';
+        
+        // El backend puede devolver la categoría como objeto o el nombre directo
+        const nombreCategoria = item.categoria?.nombre || item.categoria || 'entrantes';
+        const categoriaFormateada = typeof nombreCategoria === 'string' ? nombreCategoria.toLowerCase() : 'entrantes';
         
         return {
           id: item.id ? String(item.id) : '',
           nombre: item.nombre || 'Plato sin nombre',
-          name: item.nombre || 'Plato sin nombre',
+          name: item.nombre || 'Plato sin nombre', // Para compatibilidad
           
           precio: precioNumerico,
           price: precioNumerico,
           
-          // Le pasamos la URL completa apuntando a la tienda para que no falle
-          descripcion: urlImagenCorregida,
-          description: urlImagenCorregida,
+          // La descripción vuelve a ser texto real
+          descripcion: descripcionReal,
+          description: descripcionReal,
           
-          categoria: item.categoria || 'entrantes',
-          category: item.categoria || 'entrantes',
+          // Guardamos la URL pública de Supabase en los campos de imagen
+          imagen: urlImagen,
+          image: urlImagen,
+          
+          categoria: categoriaFormateada,
+          category: categoriaFormateada,
           
           disponible: item.disponible !== false,
           available: item.disponible !== false

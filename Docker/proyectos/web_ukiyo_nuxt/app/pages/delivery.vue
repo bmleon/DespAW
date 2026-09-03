@@ -56,16 +56,14 @@ const categories = [
 
 // --- LÓGICA DE FILTRADO Y ORDENACIÓN GLOBAL ---
 const filteredProducts = computed(() => {
-  // FUNCIÓN AUXILIAR: Normaliza cualquier texto para emparejar categorías de forma segura
   const normalizar = (texto: string) => {
     return texto
       .toLowerCase()
       .trim()
-      .replace(/s$/, '')      // Quita la 's' final
-      .replace(/gui/g, 'gi'); // Soluciona "niguiri" vs "nigiri"
+      .replace(/s$/, '')      
+      .replace(/gui/g, 'gi'); 
   };
 
-  // 🌟 CASO 1: Si seleccionamos "TODO", ordenamos todos los platos por el orden de vuestras categorías
   if (selectedCategory.value === 'all') {
     return [...menuItems.value].sort((a, b) => {
       if (!a.categoria) return 1;
@@ -84,14 +82,11 @@ const filteredProducts = computed(() => {
     });
   }
   
-  // 🌟 CASO 2: Si hay un filtro específico activo, aplicamos el filtrado ultra-tolerante
   const filtroLimpio = normalizar(selectedCategory.value);
 
   return menuItems.value.filter(p => {
     if (!p.categoria) return false;
-    
     const categoriaBDLimpia = normalizar(p.categoria);
-    
     return categoriaBDLimpia === filtroLimpio || categoriaBDLimpia.includes(filtroLimpio) || filtroLimpio.includes(categoriaBDLimpia);
   });
 });
@@ -102,7 +97,8 @@ const addToCart = (product: Plato) => {
     id: product.id,
     name: product.nombre,
     price: product.precio,
-    image: product.descripcion 
+    // 🌟 AHORA SÍ PASAMOS LA IMAGEN REAL AL CARRITO
+    image: product.imagen 
   });
   triggerToast(product.nombre);
 };
@@ -169,9 +165,10 @@ const addToCart = (product: Plato) => {
           class="group bg-white dark:bg-ukiyo-nav rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 border border-gray-100 dark:border-gray-800 flex flex-col h-full hover:-translate-y-2"
         >
           <div class="relative h-56 overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+            <!-- 🌟 AHORA CARGAMOS LA IMAGEN REAL DESDE SUPABASE -->
             <img 
-              v-if="product.descripcion"
-              :src="product.descripcion" 
+              v-if="product.imagen"
+              :src="product.imagen" 
               :alt="product.nombre" 
               class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
               loading="lazy" 
@@ -181,20 +178,15 @@ const addToCart = (product: Plato) => {
                 <path d="m15 11-1 9"/><path d="m19 11-4-7"/><path d="M2 11h20"/><path d="m3.5 11 1.6 7.4a2 2 0 0 0 2 1.6h9.8a2 2 0 0 0 2-1.6l1.7-7.4"/><path d="m9 11 1 9"/><path d="M5 11 9 4"/>
               </svg>
             </div>
-
-            <div v-if="product.alergenos && product.alergenos.length > 0" class="absolute top-3 left-3 flex gap-1 flex-wrap">
-              <span v-for="alg in product.alergenos" :key="alg" class="bg-black/60 backdrop-blur-sm text-[9px] text-white px-2 py-0.5 rounded uppercase font-bold border border-white/20">
-                {{ alg }}
-              </span>
-            </div>
           </div>
 
           <div class="p-6 flex flex-col flex-grow">
             <h3 class="text-xl font-bold text-gray-900 dark:text-white group-hover:text-ukiyo-gold transition-colors duration-300 uppercase tracking-tighter mb-2">
               {{ product.nombre }}
             </h3>
+            <!-- 🌟 AHORA MOSTRAMOS LA DESCRIPCIÓN REAL ESCRITA EN EL PANEL -->
             <p class="text-gray-600 dark:text-gray-400 text-sm leading-relaxed mb-6 flex-grow line-clamp-3 italic">
-              Sin alérgenos - Plato fresco preparado al momento.
+              {{ product.descripcion }}
             </p>
             <div class="mt-auto pt-4 border-t border-gray-100 dark:border-gray-800">
                <div class="text-2xl font-black text-gray-900 dark:text-white mb-4">
