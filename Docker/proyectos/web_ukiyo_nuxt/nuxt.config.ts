@@ -10,14 +10,13 @@ export default defineNuxtConfig({
     '@pinia/nuxt', 
     '@nuxt/image',
     '@nuxtjs/i18n',
-    '@vercel/analytics', // 📊 Vercel Analytics (Visitas)
-    '@vercel/speed-insights' // ⚡ Vercel Speed Insights (Velocidad)
+    '@vercel/analytics/nuxt',       // 📊 Añadido el sufijo /nuxt
+    '@vercel/speed-insights/nuxt'   // ⚡ Añadido el sufijo /nuxt
   ],
 
   i18n: {
     strategy: 'prefix_except_default',
     defaultLocale: 'es',
-    // Apuntamos a la carpeta de traducciones
     langDir: 'locales', 
     locales: [
       { code: 'es', name: 'Español', iso: 'es-ES', file: 'es.json' },
