@@ -15,17 +15,15 @@ export class ApiMenuRepository implements MenuRepository {
       
       const data = await response.json();
 
-      // 🚨 EL CHIVATO: Vamos a ver exactamente qué envía el backend
-      console.log('🔍 DATOS RECIBIDOS DEL BACKEND:', data);
-
       if (!Array.isArray(data)) return [];
 
       return data.map((item: any) => {
         const precioNumerico = Number(item.precio) || 0;
         
-        // Atrapamos la imagen venga como venga
-        const urlImagen = item.imagen || item.image || item.foto || '';
+        // 🌟 AQUÍ ESTÁ LA MAGIA: Ahora capturamos 'imagen_url' que es lo que manda tu backend
+        const urlImagen = item.imagen_url || item.imagen || '';
         const descripcionReal = item.descripcion || '';
+        
         const nombreCategoria = item.categoria?.nombre || item.categoria || 'entrantes';
         const categoriaFormateada = typeof nombreCategoria === 'string' ? nombreCategoria.toLowerCase() : 'entrantes';
         
@@ -33,14 +31,19 @@ export class ApiMenuRepository implements MenuRepository {
           id: item.id ? String(item.id) : '',
           nombre: item.nombre || 'Plato sin nombre',
           name: item.nombre || 'Plato sin nombre', 
+          
           precio: precioNumerico,
           price: precioNumerico,
+          
           descripcion: descripcionReal,
           description: descripcionReal,
+          
           imagen: urlImagen,
           image: urlImagen,
+          
           categoria: categoriaFormateada,
           category: categoriaFormateada,
+          
           disponible: item.disponible !== false,
           available: item.disponible !== false
         };
