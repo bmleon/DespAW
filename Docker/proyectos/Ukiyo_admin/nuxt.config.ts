@@ -31,7 +31,13 @@ export default defineNuxtConfig({
     public: {
       // Backend real en Render. Se puede sobreescribir con la variable de entorno
       // NUXT_PUBLIC_API_BASE (recomendado para producción en Vercel).
-      apiBase: process.env.NUXT_PUBLIC_API_BASE || 'https://proyecto-ukiyo-backend.onrender.com'
+      apiBase: process.env.NUXT_PUBLIC_API_BASE || 'https://proyecto-ukiyo-backend.onrender.com',
+      
+      // ==========================================
+      // ALMACENAMIENTO DE IMÁGENES (Supabase Storage)
+      // ==========================================
+      supabaseUrl: process.env.NUXT_PUBLIC_SUPABASE_URL,
+      supabaseKey: process.env.NUXT_PUBLIC_SUPABASE_KEY
     }
   }
 })

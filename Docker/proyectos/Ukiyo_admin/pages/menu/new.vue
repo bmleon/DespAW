@@ -8,6 +8,9 @@ definePageMeta({
 
 const config = useRuntimeConfig()
 const apiBase = config.public.apiBase as string
+// Cogemos las credenciales de Supabase del nuxt.config
+const supabaseUrl = config.public.supabaseUrl as string
+const supabaseKey = config.public.supabaseKey as string
 
 const route = useRoute()
 const isEditMode = ref(false)
@@ -17,16 +20,16 @@ const productId = ref('')
 const name = ref('')
 const price = ref(0)
 const descripcion = ref('')
-const extensionImagen = ref('.jpg')
 const disponible = ref(true)
+const imagenUrl = ref('') // 🆕 Aquí guardaremos la URL real de Supabase
 
 const isLoading = ref(false)
+const isUploadingImage = ref(false) // 🆕 Para saber si la foto se está subiendo
 const isLoadingCategorias = ref(false)
 const errorMsg = ref('')
 const successMsg = ref('')
 
-// Categorías reales, cargadas desde el backend (GET /carta/categorias),
-// ya que "categoriaId" tiene que ser el ID numérico real de una categoría existente.
+// Categorías reales, cargadas desde el backend
 interface CategoriaBackend { id: number; nombre: string }
 const categoriasBackend = ref<CategoriaBackend[]>([])
 const selectedCategoria = ref<CategoriaBackend | undefined>(undefined)
@@ -60,6 +63,38 @@ const getToken = (): string | null => {
   }
 }
 
+// 📸 🆕 FUNCIÓN PARA SUBIR LA IMAGEN A SUPABASE
+const subirImagen = async (event: Event) => {
+  const file = (event.target as HTMLInputElement).files?.[0];
+  if (!file) return;
+
+  isUploadingImage.value = true;
+  errorMsg.value = '';
+
+  // Creamos un nombre único con la fecha para no pisar fotos antiguas
+  const fileName = `${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
+  const bucketUrl = `${supabaseUrl}/storage/v1/object/platos-imagenes/${fileName}`;
+
+  try {
+    await $fetch(bucketUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${supabaseKey}`,
+        'apikey': supabaseKey,
+      },
+      body: file
+    });
+
+    // Generamos la URL pública final
+    imagenUrl.value = `${supabaseUrl}/storage/v1/object/public/platos-imagenes/${fileName}`;
+  } catch (error) {
+    console.error('Error al subir la foto a Supabase:', error);
+    errorMsg.value = 'Hubo un problema al subir la imagen. Inténtalo de nuevo.';
+  } finally {
+    isUploadingImage.value = false;
+  }
+};
+
 // DETECTOR DE MODO: Si viene un ?id= en la URL, precargamos el plato
 onMounted(async () => {
   await cargarCategorias()
@@ -78,6 +113,7 @@ onMounted(async () => {
         price.value = Number(plato.precio) || 0
         descripcion.value = plato.descripcion || ''
         disponible.value = plato.disponible !== false
+        imagenUrl.value = plato.imagen || '' // 🆕 Cargamos la imagen antigua si existe
 
         // Sincronizamos el selector con la categoría real del plato
         const catEncontrada = categoriasBackend.value.find(c => c.id === plato.categoria_id)
@@ -95,8 +131,9 @@ onMounted(async () => {
 })
 
 const handleGuardarPlato = async () => {
-  if (!name.value || price.value < 0 || !descripcion.value || !selectedCategoria.value) {
-    errorMsg.value = 'Por favor, rellena los campos obligatorios (nombre, precio, descripción y categoría).'
+  // 🆕 Añadimos la validación para obligar a que haya una imagen
+  if (!name.value || price.value < 0 || !descripcion.value || !selectedCategoria.value || !imagenUrl.value) {
+    errorMsg.value = 'Por favor, rellena todos los campos, incluyendo la foto del plato.'
     return
   }
 
@@ -105,24 +142,15 @@ const handleGuardarPlato = async () => {
   successMsg.value = ''
 
   try {
-    // Ruta de la imagen física (se guarda en el campo "imagen", no en "descripcion")
-    const nombreNormalizado = name.value
-      .toLowerCase()
-      .trim()
-      .replace(/\s+/g, '-')
-      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-    const rutaImagenFinal = `/comida/${nombreNormalizado}${extensionImagen.value}`
-
     const bodyPayload = {
       nombre: name.value.trim(),
       descripcion: descripcion.value.trim(),
       precio: Number(price.value),
-      imagen: rutaImagenFinal,
+      imagen: imagenUrl.value, // 🆕 Mandamos la URL directa de Supabase
       disponible: disponible.value,
       categoriaId: selectedCategoria.value!.id
     }
 
-    // El backend usa PUT (no PATCH) para actualizar un plato
     const urlApi = isEditMode.value
       ? `${apiBase}/carta/platos/${productId.value}`
       : `${apiBase}/carta/platos`
@@ -165,7 +193,7 @@ const handleGuardarPlato = async () => {
         {{ isEditMode ? 'Editar Plato Ukiyo' : 'Nuevo Plato Ukiyo' }}
       </h1>
       <p class="text-gray-500 text-sm">
-        {{ isEditMode ? 'Modifica las propiedades del plato en tiempo real.' : 'Añade un plato vinculándolo automáticamente a la carpeta public/comida.' }}
+        {{ isEditMode ? 'Modifica las propiedades del plato en tiempo real.' : 'Añade un plato y sube su foto directamente a la nube.' }}
       </p>
     </div>
 
@@ -210,27 +238,32 @@ const handleGuardarPlato = async () => {
           <UToggle v-model="disponible" color="amber" />
         </div>
 
-        <div v-if="!isEditMode">
-          <label class="block text-xs font-bold uppercase text-gray-400 mb-2">Formato de la Foto</label>
-          <URadioGroup
-            v-model="extensionImagen"
-            :options="[
-              { label: 'Archivo .jpg (Ej: edamame.jpg)', value: '.jpg' },
-              { label: 'Archivo .png (Ej: edamame.png)', value: '.png' }
-            ]"
-            class="text-sm text-gray-500"
+        <!-- 📸 🆕 CAMPO DE SUBIDA DE IMAGEN -->
+        <div class="border-t border-gray-100 dark:border-gray-800 pt-4 mt-2">
+          <label class="block text-xs font-bold uppercase text-gray-400 mb-2">Foto del Plato *</label>
+          <input 
+            type="file" 
+            accept="image/*" 
+            @change="subirImagen" 
+            class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-ukiyo-gold file:text-black hover:file:bg-yellow-400 transition-all cursor-pointer"
           />
-          <p class="text-gray-400 text-[11px] mt-2 italic">
-            Asegúrate de que la foto física esté guardada exactamente en la carpeta del cliente bajo: <code class="text-amber-500">public/comida/</code>
-          </p>
+          <div v-if="isUploadingImage" class="text-xs text-amber-500 mt-3 font-bold animate-pulse">
+            Subiendo imagen a la nube...
+          </div>
+          <img 
+            v-if="imagenUrl && !isUploadingImage" 
+            :src="imagenUrl" 
+            class="mt-4 h-32 w-32 object-cover rounded-xl shadow-md border border-gray-100 dark:border-gray-700" 
+            alt="Vista previa del plato" 
+          />
         </div>
 
         <UAlert v-if="errorMsg" title="Error" :description="errorMsg" color="red" variant="soft" icon="i-heroicons-x-circle" />
         <UAlert v-if="successMsg" title="Éxito" :description="successMsg" color="green" variant="soft" icon="i-heroicons-check-circle" />
 
         <div class="flex justify-end gap-2 pt-2">
-          <UButton color="gray" variant="ghost" to="/menu" :disabled="isLoading">Cancelar</UButton>
-          <UButton type="submit" color="amber" variant="solid" :loading="isLoading" class="font-bold uppercase tracking-wider text-xs px-4">
+          <UButton color="gray" variant="ghost" to="/menu" :disabled="isLoading || isUploadingImage">Cancelar</UButton>
+          <UButton type="submit" color="amber" variant="solid" :loading="isLoading" :disabled="isUploadingImage" class="font-bold uppercase tracking-wider text-xs px-4">
             {{ isLoading ? 'Guardando...' : (isEditMode ? 'Actualizar Plato' : 'Crear Plato') }}
           </UButton>
         </div>
