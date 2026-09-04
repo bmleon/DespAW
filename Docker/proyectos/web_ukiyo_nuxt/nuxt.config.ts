@@ -10,9 +10,14 @@ export default defineNuxtConfig({
     '@pinia/nuxt', 
     '@nuxt/image',
     '@nuxtjs/i18n',
-    '@vercel/analytics/nuxt',       // 📊 Añadido el sufijo /nuxt
-    '@vercel/speed-insights/nuxt'   // ⚡ Añadido el sufijo /nuxt
+    '@vercel/analytics/nuxt',
+    '@vercel/speed-insights/nuxt',
+    'nuxt-gtag' // 🎯 Módulo de Google Analytics activado
   ],
+
+  gtag: {
+    id: 'G-6TRS2ZSSTT' // 🎯 ¡Tu código único de Ukiyo!
+  },
 
   i18n: {
     strategy: 'prefix_except_default',
