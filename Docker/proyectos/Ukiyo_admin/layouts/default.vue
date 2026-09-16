@@ -9,6 +9,7 @@ const links = [
   { label: 'Pedidos Delivery', icon: 'i-heroicons-shopping-bag', to: '/orders' },
   { label: 'Solicitudes Eventos', icon: 'i-heroicons-calendar-days', to: '/events' },
   { label: 'Inventario', icon: 'i-heroicons-archive-box', to: '/inventory' },
+  { label: 'Recetas', icon: 'i-heroicons-clipboard-document-list', to: '/recetas' },
   { label: 'Configuración', icon: 'i-heroicons-cog-6-tooth', to: '/settings' }
 ]
 
