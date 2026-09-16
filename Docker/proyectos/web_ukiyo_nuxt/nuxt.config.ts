@@ -6,17 +6,18 @@ export default defineNuxtConfig({
   },
 
   modules: [
-    '@nuxtjs/tailwindcss', 
-    '@pinia/nuxt', 
+    '@nuxtjs/tailwindcss',
+    '@pinia/nuxt',
     '@nuxt/image',
     '@nuxtjs/i18n',
     '@vercel/analytics/nuxt',
     '@vercel/speed-insights/nuxt',
-    'nuxt-gtag' // 🎯 Módulo de Google Analytics activado
+    'nuxt-gtag',
+    '@sentry/nuxt/module'
   ],
 
   gtag: {
-    id: 'G-6TRS2ZSSTT' // 🎯 ¡Tu código único de Ukiyo!
+    id: 'G-6TRS2ZSSTT' 
   },
 
   i18n: {
@@ -54,5 +55,15 @@ export default defineNuxtConfig({
 
   devtools: {
     enabled: true
+  },
+
+  sentry: {
+    org: 'cocina-para-vagos',
+    project: 'ukiyo-web',
+    autoInjectServerSentry: 'top-level-import'
+  },
+
+  sourcemap: {
+    client: 'hidden'
   }
 })
