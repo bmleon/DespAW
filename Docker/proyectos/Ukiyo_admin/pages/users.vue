@@ -179,7 +179,7 @@ const guardarNuevoUsuario = async () => {
 
     console.log('🚀 Lanzando petición de alta al backend:', bodyPayload);
 
-    const response = await $fetch<any>(`${apiBase}/usuarios`, {
+    const response = await $fetch<any>(`${apiBase}/usuarios/admin`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
