@@ -13,8 +13,47 @@ export default defineNuxtConfig({
     '@vercel/analytics/nuxt',
     '@vercel/speed-insights/nuxt',
     'nuxt-gtag',
-    '@sentry/nuxt/module'
+    '@sentry/nuxt/module',
+    '@vite-pwa/nuxt' // 📱 Módulo PWA añadido
   ],
+
+  // 📱 Configuración de la App Instalable
+  pwa: {
+    registerType: 'autoUpdate',
+    manifest: {
+      name: 'Ukiyo | Alta Cocina Japonesa',
+      short_name: 'Ukiyo',
+      description: 'El mundo flotante de la gastronomía japonesa en tu mesa.',
+      theme_color: '#1a1a1a',
+      background_color: '#000000',
+      icons: [
+        {
+          src: '/icon-192x192.png',
+          sizes: '192x192',
+          type: 'image/png'
+        },
+        {
+          src: '/icon-512x512.png',
+          sizes: '512x512',
+          type: 'image/png'
+        },
+        {
+          src: '/icon-512x512.png',
+          sizes: '512x512',
+          type: 'image/png',
+          purpose: 'any maskable'
+        }
+      ]
+    },
+    workbox: {
+      navigateFallback: '/',
+      globPatterns: ['**/*.{js,css,html,png,svg,ico}']
+    },
+    devOptions: {
+      enabled: true,
+      type: 'module',
+    }
+  },
 
   gtag: {
     id: 'G-6TRS2ZSSTT' 
