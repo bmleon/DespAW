@@ -5,6 +5,7 @@ import { useAuthStore } from '~/stores/auth';
 
 // Inicializamos la configuración dinámica
 const config = useRuntimeConfig();
+const apiBase = config.public.apiBase as string;
 const cartStore = useCartStore();
 const authStore = useAuthStore();
 
@@ -37,7 +38,7 @@ const formCliente = ref({
 onMounted(() => {
   // 1. Cargamos el nombre y email si el usuario inició sesión
   if (authStore.isAuthenticated && authStore.user) {
-    formCliente.value.nombre = authStore.user.username || '';
+    formCliente.value.nombre = authStore.user.nombre || authStore.user.username || '';
     formCliente.value.email = authStore.user.email;
   }
 
@@ -45,9 +46,11 @@ onMounted(() => {
   if (import.meta.client) {
     const telefonoGuardado = localStorage.getItem('ukiyo_cliente_telefono');
     const direccionGuardada = localStorage.getItem('ukiyo_cliente_direccion');
-    
+    const emailGuardado = localStorage.getItem('ukiyo_cliente_email');
+
     if (telefonoGuardado) formCliente.value.telefono = telefonoGuardado;
     if (direccionGuardada) formCliente.value.direccion = direccionGuardada;
+    if (emailGuardado && !formCliente.value.email) formCliente.value.email = emailGuardado;
   }
 });
 
@@ -55,8 +58,8 @@ const finalizarPedido = async () => {
   if (cartStore.items.length === 0) return;
 
   // Validaciones obligatorias
-  if (!formCliente.value.nombre || !formCliente.value.telefono) {
-    errorMessage.value = 'Por favor, necesitamos un nombre y teléfono para procesar el pedido.';
+  if (!formCliente.value.nombre || !formCliente.value.telefono || !formCliente.value.email) {
+    errorMessage.value = 'Por favor, necesitamos un nombre, teléfono y email para procesar el pedido.';
     return;
   }
   if (tipoEntrega.value === 'domicilio' && !formCliente.value.direccion) {
@@ -71,24 +74,46 @@ const finalizarPedido = async () => {
     // 🌟 PERSISTENCIA EN LOCALSTORAGE (Corregido para TS):
     if (import.meta.client) {
       localStorage.setItem('ukiyo_cliente_telefono', formCliente.value.telefono.trim());
+      localStorage.setItem('ukiyo_cliente_email', formCliente.value.email.trim());
       if (tipoEntrega.value === 'domicilio') {
         localStorage.setItem('ukiyo_cliente_direccion', formCliente.value.direccion.trim());
       }
     }
 
-    // 🚀 BYPASS SIMULADO DE MICROSERVICIO (Resiliencia en Cliente):
-    console.log('📦 Encolando orden en la pasarela interna de resiliencia...');
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    // Construimos el body exactamente como espera CreatePedidoDto
+    const bodyPedido = {
+      usuarioId: authStore.isAuthenticated && authStore.user ? Number(authStore.user.id) : undefined,
+      clienteNombre: formCliente.value.nombre.trim(),
+      clienteTelefono: formCliente.value.telefono.trim(),
+      clienteEmail: formCliente.value.email.trim().toLowerCase(),
+      total: cartStore.total,
+      tipoEntrega: tipoEntrega.value,
+      direccionEntrega: tipoEntrega.value === 'domicilio' ? formCliente.value.direccion.trim() : undefined,
+      detalles: cartStore.items.map(item => ({
+        platoId: Number(item.id),
+        cantidad: item.quantity || 1,
+        precioUnitario: item.price
+      }))
+    };
 
-    // Vaciamos el carrito de Pinia tras el éxito simulado
+    const pedidoCreado = await $fetch<any>(`${apiBase}/pedidos`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: bodyPedido
+    });
+
+    // Vaciamos el carrito de Pinia tras el éxito real
     cartStore.clear();
-    
-    // Viajamos directos a la vista de éxito integrada
-    await navigateTo('/exito');
+
+    // Viajamos a la vista de éxito pasando el ID real del pedido creado
+    await navigateTo(`/exito?id=${pedidoCreado.id}`);
 
   } catch (error: any) {
-    console.error('Error al enviar a cocina:', error);
-    errorMessage.value = 'Hubo un error de conexión con la cocina. Por favor, inténtalo de nuevo.';
+    console.error('Error al enviar el pedido:', error);
+    const msg = error.data?.message;
+    errorMessage.value = Array.isArray(msg)
+      ? msg.join(', ')
+      : (msg || 'Hubo un error al procesar tu pedido. Por favor, inténtalo de nuevo.');
   } finally {
     isSubmitting.value = false;
   }
@@ -187,6 +212,12 @@ const finalizarPedido = async () => {
               v-model="formCliente.nombre" 
               type="text" 
               placeholder="Tu nombre completo" 
+              class="w-full p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition-all dark:text-white"
+            />
+            <input 
+              v-model="formCliente.email" 
+              type="email" 
+              placeholder="Email de contacto" 
               class="w-full p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition-all dark:text-white"
             />
             <input 

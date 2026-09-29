@@ -1,19 +1,22 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { useRoute } from 'vue-router';
+
+const route = useRoute();
 
 // Variables reactivas para mostrar al usuario
 const numeroPedido = ref('');
 const tiempoEstimado = ref('');
 
 onMounted(() => {
-  // 1. Generamos un número de pedido ficticio temporalmente
-  // Cuando el backend esté listo, esto lo leeremos de la URL (ej: /exito?id=123)
-  numeroPedido.value = 'UKY-' + Math.floor(1000 + Math.random() * 9000);
-  
-  // 2. Calculamos la hora estimada (Hora actual + 40 minutos)
+  // Leemos el ID real del pedido que llega por la URL (/exito?id=123)
+  const idReal = route.query.id;
+  numeroPedido.value = idReal ? `UKY-${idReal}` : 'UKY-????';
+
+  // Calculamos la hora estimada (Hora actual + 40 minutos)
   const ahora = new Date();
   ahora.setMinutes(ahora.getMinutes() + 40);
-  
+
   // Formateamos la hora para que salga bonita (ej. 21:45)
   tiempoEstimado.value = ahora.toLocaleTimeString('es-ES', { 
     hour: '2-digit', 
