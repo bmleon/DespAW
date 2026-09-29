@@ -11,6 +11,7 @@ export class ValidarCateringUseCase {
     // 1. Validaciones de estructura crítica
     if (!datos.nombre || datos.nombre.trim().length < 3) return null;
     if (!SecurityService.esEmailValido(datos.email)) return null;
+    if (!datos.telefono || datos.telefono.trim().length < 6) return null;
     if (!SecurityService.validarInvitados(datos.invitados)) return null;
     if (!datos.fecha) return null;
 
@@ -18,6 +19,7 @@ export class ValidarCateringUseCase {
     return {
       nombre: SecurityService.sanitizarTexto(datos.nombre),
       email: datos.email.trim().toLowerCase(),
+      telefono: SecurityService.sanitizarTexto(datos.telefono),
       fecha: datos.fecha,
       invitados: datos.invitados,
       tipoEvento: datos.tipoEvento,

@@ -60,6 +60,7 @@ onUnmounted(() => {
 const form = ref({
   nombre: '',
   email: '',
+  telefono: '',
   fecha: '',
   invitados: '',
   tipoEvento: 'corporate',
@@ -76,6 +77,7 @@ const submitCatering = async () => {
   const datosBrutos: SolicitudCatering = {
     nombre: form.value.nombre,
     email: form.value.email,
+    telefono: form.value.telefono,
     fecha: form.value.fecha,
     invitados: Number(form.value.invitados), // Forzamos conversión estricta a número
     tipoEvento: form.value.tipoEvento,
@@ -102,6 +104,7 @@ const submitCatering = async () => {
     form.value = {
       nombre: '',
       email: '',
+      telefono: '',
       fecha: '',
       invitados: '',
       tipoEvento: 'corporate',
@@ -197,6 +200,7 @@ const submitCatering = async () => {
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <input v-model="form.nombre" type="text" placeholder="Nombre / Empresa" class="input-style" required>
             <input v-model="form.email" type="email" placeholder="Email de contacto" class="input-style" required>
+            <input v-model="form.telefono" type="tel" placeholder="Teléfono de contacto" class="input-style" required>
             <input v-model="form.fecha" type="date" class="input-style" required>
             <input v-model="form.invitados" type="number" placeholder="Nº Invitados" class="input-style" required>
           </div>

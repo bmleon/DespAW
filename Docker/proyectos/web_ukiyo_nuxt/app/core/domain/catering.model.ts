@@ -3,6 +3,7 @@
 export interface SolicitudCatering {
   nombre: string;
   email: string;
+  telefono: string;
   fecha: string;
   invitados: number;
   tipoEvento: string;
