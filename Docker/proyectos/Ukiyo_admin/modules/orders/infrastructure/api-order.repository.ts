@@ -21,20 +21,36 @@ export class ApiOrderRepository implements OrderRepository {
     }
   }
 
+  // El backend tiene 5 estados de seguimiento; el dominio de este panel solo
+  // distingue 3, así que agrupamos: todo lo que no esté entregado ni cancelado
+  // cuenta como "pending" (en curso).
+  private mapEstado(estadoBackend: string | null | undefined): Order['status'] {
+    if (estadoBackend === 'ENTREGADO') return 'completed';
+    if (estadoBackend === 'CANCELADO') return 'cancelled';
+    return 'pending';
+  }
+
+  private mapPedidoADomain(p: any): Order {
+    return {
+      id: String(p.id),
+      customer: p.cliente_nombre || 'Cliente Web',
+      total: Number(p.total) || 0,
+      status: this.mapEstado(p.estado_pedido),
+      created_at: p.creado_en
+    };
+  }
+
   // GET /pedidos está protegido con @Roles('ADMIN'), así que hace falta el token
   async findAll(): Promise<Order[]> {
     try {
-      const data = await ofetch<Order[]>(`${this.baseUrl}/pedidos`, {
+      const data = await ofetch<any[]>(`${this.baseUrl}/pedidos`, {
         headers: {
           'Authorization': `Bearer ${this.getToken()}`
         }
       });
-      return data;
+      return Array.isArray(data) ? data.map(p => this.mapPedidoADomain(p)) : [];
     } catch (error) {
       console.error('Error al obtener los pedidos desde la API:', error);
-      // MODIFICACIÓN CRUCIAL: Comentamos el throw y devolvemos un array vacío.
-      // Así, si da error 400, el Dashboard index no se colapsa y puede cargar tus 4 usuarios.
-      // throw new Error('No se pudo cargar la lista de pedidos.');
       return [];
     }
   }

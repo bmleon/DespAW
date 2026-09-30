@@ -49,20 +49,22 @@ const isRefreshing = ref(false)
 // --- RECOLECCIÓN DE DATOS POR CASOS DE USO ---
 const loadDashboardData = async () => {
   try {
-    // Sincronizamos las dos llamadas funcionales en el orden exacto de las variables
-    const [productsData, usersData] = await Promise.all([
+    // Sincronizamos las tres llamadas reales en el orden exacto de las variables
+    const [productsData, usersData, ordersData] = await Promise.all([
       getProductsUseCase.execute(),
-      getUsersUseCase.execute()
+      getUsersUseCase.execute(),
+      getOrdersUseCase.execute()
     ])
     
     products.value = Array.isArray(productsData) ? productsData : []
     users.value = Array.isArray(usersData) ? usersData : []
-    orders.value = [] // Bypass temporal de pedidos para evitar el error 400
+    orders.value = Array.isArray(ordersData) ? ordersData : []
     
     // --- NUEVO LOG REAL DE CONTROL EN LA CONSOLA ---
     console.log("=== COMPROBACIÓN REAL DEL DASHBOARD ===")
     console.log("Datos que llegan de usersData:", usersData)
     console.log("Cantidad de usuarios en users.value:", users.value.length)
+    console.log("Cantidad de pedidos en orders.value:", orders.value.length)
     console.log("=======================================")
 
   } catch (error) {
@@ -186,7 +188,7 @@ const downloadReport = () => { window.print() }
                       variant="subtle" 
                       size="xs"
                     >
-                      {{ order.status || 'Pendiente' }}
+                      {{ order.status === 'completed' ? 'Entregado' : order.status === 'cancelled' ? 'Cancelado' : 'En curso' }}
                     </UBadge>
                   </td>
                 </tr>
